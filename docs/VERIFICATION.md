@@ -2,6 +2,10 @@
 
 Recorded 2026-10-14. Local host: Mac17,8 / Apple M5 Pro, arm64, macOS 26.6.2 (25G83); Xcode 27.0; Node 24.21.0; npm 11.19.0. Locked Electron 44.7.1 / Chromium 152.0.7977.149, Forge 8.0.1, TypeScript 6.0.3, ws 8.22.0. No partner Mac or Tailscale installation was available. No tailnet or system security settings were changed.
 
+## Final-build Keychain reapproval
+
+Both exact archives were rebuilt from clean application source6a7bdc40109403a2ce64b2301c361c0f3b32491d and pass the artifact checks below. After rebuilding, Keychain access exceeded the original test deadlines. The computer-use tool denied SecurityAgent access for safety; the user completed local approval and replied done. The unchanged packaged checks then passed all20 groups at both sizes with an in-memory five-minute storage deadline. A subsequent ordinary npm run test:packaged passed both sizes with its normal30-second storage deadline. No agent UI workaround, plaintext fallback or security bypass was used. Local approval may recur for changed ad-hoc builds; the earlier automatic test timeouts were real failures to complete, not successful checks.
+
 ## Automated software evidence
 
 | Command | Observed result |
@@ -10,7 +14,7 @@ Recorded 2026-10-14. Local host: Mac17,8 / Apple M5 Pro, arm64, macOS 26.6.2 (25
 | `npm run typecheck` | Pass. |
 | `npm run lint` | Pass. |
 | `npm run test:media` | Pass in 132.3 seconds, two isolated real Chromium renderers with real WebRTC and authenticated WebSockets. Details below. |
-| `npm run test:packaged` | Pass, 20 check groups at each of 320×180 and 160×90 on arm64. Actual bundle, isolated profiles; no development UI/server. |
+| `npm run test:packaged` | 20 groups pass at both mini sizes, including final exact bundle after local Keychain approval; see the storage-deadline note above. |
 | `npm audit --omit=dev --json` | Zero production npm advisories. This is not a security certification or a Chromium vulnerability assessment. |
 | `npm audit --json` | Exits 1: eight development dependency advisories, six high and two moderate. Details below. |
 | `npm run make:arm64` / `npm run make:x64` | Both pass; separate private ZIP archives produced. |

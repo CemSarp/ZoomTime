@@ -2,6 +2,12 @@
 
 Updated 2026-10-14. Version 0.2.0 is an implemented calling **release candidate**. Physical release acceptance remains pending. This supersedes the earlier probe-only status; preserve the 0.1.0 archives as historical window-probe builds.
 
+## Final build and OS approval
+
+The exact 0.2.0 archives were rebuilt from clean application source6a7bdc40109403a2ce64b2301c361c0f3b32491d. Both pass signature/architecture/metadata/payload/fuse/ZIP and SHA-256 checks. The final packaged smoke passes all20 groups at both sizes, including actual safeStorage encrypt/decrypt and reset.
+
+New ad-hoc signatures caused Keychain access to exceed the original test deadline. The computer-use tool explicitly blocked SecurityAgent for safety, so no agent UI workaround was attempted. The user completed the local approval and replied done. The unchanged checks then passed with an in-memory five-minute storage deadline; a subsequent ordinary npm run test:packaged also passed both sizes with its normal30-second storage deadline. No encryption, permission or source bypass was added. Expect local Keychain approval after future changed builds. Later documentation commits do not change the archive's application-source revision6a7bdc4. Final manifests and a standalone recipient INSTALL.md are under out/distribution/0.2.0.
+
 ## Decision and evidence status
 
 The user reported normal/mini and full-screen playback passing on their Mac only, then explicitly requested continued implementation and agent-run tests. AGENTS.md and the 2026-10-14 plan record proceeding with software work while retaining partner-Mac, actual two-network and long-session tests as release blockers. An actual no-TURN connection failure still stops release. Do not ask again for permission to do already authorized local work or invent remote evidence.
