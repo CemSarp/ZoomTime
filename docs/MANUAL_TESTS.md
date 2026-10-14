@@ -1,3 +1,5 @@
+> Historical 0.1.0 synthetic window-probe procedure. For the calling candidate use [current acceptance](ACCEPTANCE.md), [verification](VERIFICATION.md), and [network setup](NETWORK_SETUP.md). The user reported their own-Mac full-screen test passing on 2026-10-14; partner evidence remains pending.
+
 # Phase 1 physical acceptance
 
 Do this on **each actual Mac**, with the matching privately shared packaged build. The full-screen gate is currently **pending**. Do not advance to signaling merely because unit/packaged smoke tests passed.

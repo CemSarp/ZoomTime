@@ -1,39 +1,62 @@
 # ZoomTime
 
-A private Mac app for seeing your partner in a tiny floating window while each person separately plays a movie.
+A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
 
-**Current build: window feasibility probe, not a calling app.** It shows labeled synthetic moving circles and a live frame counter. There is no camera, microphone, FaceTime capture, recording, signaling server, or Tailscale configuration in this milestone.
+**Version 0.2.0 is a calling release candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
 
-The approved plan requires the small window to pass actual full-screen tests on **both Macs** before networking work. See [the manual test sheet](docs/MANUAL_TESTS.md) and [current handoff](HANDOFF.md).
+## Install
 
-## Try the packaged probe
+macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
-macOS 14 or newer. Apple menu > About This Mac: choose `arm64` for an Apple chip or `x64` for an Intel processor.
+1. Choose `out/make/zip/darwin/arm64/ZoomTime-darwin-arm64-0.2.0.zip` or the matching x64 archive.
+2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in `out/distribution/0.2.0/SHA256SUMS`. Send the checksum with the archive. From this repository: `shasum -a 256 -c out/distribution/0.2.0/SHA256SUMS`.
+3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
+4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
 
-1. Use the matching archive under `out/make/zip/darwin/arm64/` or `out/make/zip/darwin/x64/`.
-2. Send the matching archive plus its checksum from `out/distribution/SHA256SUMS`. On the receiving Mac, run `shasum -a 256 /path/to/the/downloaded.zip` and compare the exact digest. From this project root, verify both with `shasum -a 256 -c out/distribution/SHA256SUMS`.
-3. Extract the zip and copy `ZoomTime.app` into Applications. Open it.
-4. This privately built app is ad-hoc signed and unnotarized. If macOS blocks a build you trust, follow [Apple's per-app approval instructions](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper or remove quarantine globally. If approval is unavailable, report the exact message.
-5. Click **Open mini mode**, move/resize it, and put your actual movie player into true full screen. Check that the circles and frame count continue.
-6. Use the restore arrow, Escape while ZoomTime has focus, or Window > Restore normal window. The session ID and elapsed counter should not reset.
+The previous 0.1.0 probe archives remain available; keep them while testing replacements. Updates are manual. The stable name/bundle identifier helps preserve settings; ad-hoc signing can still cause Keychain or permission prompts on updates. There is no publisher identity or hardened runtime in this free private distribution profile. Renderer sandbox/isolation, CSP, TLS verification and ASAR integrity remain enabled.
 
-No Node or Xcode is needed to run a packaged probe. Do not send a pairing invitation; calling/pairing do not exist yet. Do not grant camera/microphone permissions to this probe.
+## Pair and call
 
-## Controls
+Complete [one-time private network setup](docs/NETWORK_SETUP.md) first. Both Macs need Tailscale and both apps must be open. No network settings are changed by ZoomTime.
+
+On your Mac, enter the approved `wss://your-mac.your-tailnet.ts.net:8443/zoomtime` endpoint and choose **Set up this Mac as host**. Choose **Copy invitation** and share it only with your partner; the invitation contains a secret. On her Mac, copy it to the clipboard and choose **Paste partner's invitation**. Credentials stay in main-process Keychain-backed encrypted storage; the renderer never receives them. The invitation is not an encrypted document.
+
+When both participants are online, choose **Call your partner**, then **Accept call** on the other Mac. Camera/microphone capture starts only after these actions. If a camera fails, **Try microphone only** is an explicit fallback; microphone denial never silently starts a normal call. Use headphones for the first movie tests.
+
+Choose **Open mini mode** to keep the partner visible. This shrinks the same window; Dock minimization hides it. It can resize to 160×90 logical pixels, with aspect-fit video. Hover or Tab exposes microphone, camera, restore and end controls. The self-preview stays muted and is hidden in mini mode. Mode changes do not create a new renderer, peer connection or capture session.
 
 | Action | Control |
 | --- | --- |
-| Normal / mini toggle | Open mini mode or ⌘⇧M while ZoomTime is active |
-| Restore | Mini arrow; Escape while the app is focused; Window menu; ⌘⇧R |
-| Resize | Drag a window edge; mini minimum 160×90 logical pixels |
-| Move mini | Drag its background |
-| Close | Mini ×, native close, ⌘W, or ⌘Q; exits this probe |
+| Normal / mini | Open mini mode or ⌘⇧M while ZoomTime is active |
+| Restore | Arrow; Escape while focused; Window menu; ⌘⇧R |
+| Move / resize mini | Drag background / window edge |
+| Mute | Disables transmitted microphone audio; hardware capture remains active |
+| Camera off | Stops/releases the camera track; turning it on reacquires a track |
+| End | End call / mini × during a call; devices are released |
+| Close / quit | Native close, ⌘W or ⌘Q ends capture and exits |
+| Device recovery | Recover devices acquires the current macOS defaults, preserving mute |
 
-Mini controls appear on hover and keyboard focus. Tab reaches restore and close. The window uses aspect-fit drawing and remembers separate mode bounds. Reduced-motion preferences stop the moving circles while the frame counter continues.
+**Reset pairing and end call** revokes the old guest after a successful encrypted save. Recreate the host and send a new invitation. If Keychain cannot save the reset, the host and capture stop and the app explicitly reports that revocation was not saved. Unlock Keychain and retry Reset before relying on revocation. Retry connection deliberately ends a current call; brief signaling outages otherwise recover automatically while retaining working media.
+
+## Troubleshooting
+
+| Problem | What to check |
+| --- | --- |
+| Host unavailable | Host app open, both Tailscale connections active, private Serve target/port correct. A proxy's 5xx response is a network failure and retries automatically. |
+| Pairing rejected | Fresh invitation, correct host, no competing instance. Reset/import again only when needed. |
+| Certificate error | Correct private hostname, Tailscale HTTPS and system clock. Never bypass TLS checking. |
+| Permission denied | macOS Settings → Privacy & Security → Camera / Microphone; allow the trusted ZoomTime build, then explicitly retry Call/Accept. |
+| Camera busy / missing | Close the other camera app, retry Camera/Recover devices, or explicitly use microphone only. |
+| Signaling works, media fails | Check direct connectivity and device grants. `iceServers: []`: no STUN or TURN fallback. Do not add services or rewrite SDP silently. |
+| Keychain failure | Unlock Keychain and retry. No plaintext fallback. A changed ad-hoc build may prompt again. |
+| Sleep or lid closure | The old call ends; wake does not reopen the camera. Start a new call explicitly. |
+| Video stale | Diagnostics use received media statistics; after a short debounce the host attempts one ICE restart, with bounded recovery. |
+
+**Connection diagnostics** shows non-secret WebRTC state, candidate types, coarse route observations, bandwidth, frames, packets and RTT. It does not log raw SDP, credentials or IP addresses. A successful private signaling connection does not prove that media uses Tailscale. Its encrypted DERP relay is separate from TURN.
 
 ## Develop and verify
 
-Node 24.12+ and npm; tested locally with Node 24.21.0, npm 11.19.0, macOS 26.6.2 arm64 and Xcode 27.0.
+Tested toolchain: Node 24.21.0, npm 11.19.0, macOS 26.6.2 arm64; Node 24.12+ required. Dependencies are exact-pinned with the lockfile.
 
 ```sh
 npm ci
@@ -44,26 +67,17 @@ npm start
 npm test
 npm run typecheck
 npm run lint
+npm run test:media
 npm run make:arm64
 npm run test:packaged
 npm run make:x64
 npm run checksums
 ```
 
-Forge builds sequentially: both architectures share its intermediate output directory. `test:packaged` launches its own arm64 instances with local debugging and isolated user-data directories; close another ZoomTime instance first. It checks default and minimum mini sizes, renderer identity across transitions, trusted keyboard/hover input, CSP and bridge restrictions. It records screenshots/evidence under `out/verification/`, then exits its own processes. Debugging is not enabled during ordinary launch.
+Build architectures sequentially because Forge shares intermediate output. `test:media` uses two isolated Chromium renderers, real authenticated WebSockets and real WebRTC with generated audio/video. It deliberately reorders ICE, interrupts signaling, checks media controls/cleanup and includes a real 60-second ring timeout. It also exercises real getUserMedia permission handling with test-only generated devices. It never acquires hardware devices; its two windows are a test fixture, not the shipped app architecture.
 
-For another matching architecture: `node scripts/smoke.mjs /absolute/path/to/ZoomTime.app`. Intel execution must be tested on the actual Intel Mac; a successful cross-build is insufficient.
+`test:packaged` launches its own arm64 instances with isolated user data and temporary loopback debugging, checks both window sizes, renderer/video-element continuity, the narrow bridge/CSP/navigation/permissions, real safeStorage and host/reset behavior, and stops its own processes. For another native architecture use `node scripts/smoke.mjs /absolute/path/to/ZoomTime.app`. Intel execution still needs an Intel Mac. Debugging is not enabled during ordinary launch. Evidence is written under `out/verification/`.
 
-`checksums` records exact archive hashes, dependency/lockfile versions, source revision and dirty status. Run it after the source is committed and the final packages are rebuilt. An ad-hoc signature has no publisher identity. The free private packaging profile has no hardened runtime and grants only JIT in this probe; renderer sandbox/isolation, certificate checks, Gatekeeper, and ASAR integrity fuses remain enforced.
+After committing final source and rebuilding, `checksums` writes version-specific hashes and a build manifest recording revision/dirty status, dependency pins, lockfile hash, architecture and exact build commands. Old-version archives are excluded from the new manifest. No artifacts, pairing, logs or personal configuration are committed.
 
-For an optional local synthetic browser video, run `node scripts/fullscreen-fixture.mjs`, open the printed loopback URL, and click Enter video full screen. Stop it with Ctrl-C afterward. This is a test tool outside the packaged app; it captures only a generated canvas, no camera, microphone, screen, or recording. It cannot replace testing your real movie player on both Macs.
-
-Verified locally: 15 unit tests, typecheck/lint, both Mac package builds/signatures and arm64 packaged checks. `npm audit --omit=dev` reports zero advisories; the full audit reports eight development-tool advisories (six high, two moderate). The affected dev-server dependencies are not bundled in the app, and the dev server binds to loopback. See HANDOFF for exposure and unresolved physical tests.
-
-## Architecture and next phases
-
-[Decisions and reasons](docs/ARCHITECTURE.md) · [Iterative implementation guide](docs/ITERATIVE_GUIDE.md) · [Window implementation plan](docs/superpowers/plans/2026-10-13-window-probe.md)
-
-Next, after both-Mac window acceptance: authenticated signaling hosted on your Mac through private Tailscale Serve, then a real direct-only WebRTC probe. `iceServers: []` means no STUN/TURN. Tailscale's encrypted DERP layer is separate. Private signaling does not prove media connectivity; if the actual two-network call fails, the agreed plan stops until its architecture is explicitly revised.
-
-No group calls, chat, accounts database, screen sharing, recording, analytics, movie synchronization, mobile client, public hosting, or automatic updates. Later phases must prove packaged permissions, safe storage, teardown/recovery, and a three-hour real movie session. This repository does not currently claim those results.
+[Architecture and reasons](docs/ARCHITECTURE.md) · [Network setup](docs/NETWORK_SETUP.md) · [Release acceptance](docs/ACCEPTANCE.md) · [Verification](docs/VERIFICATION.md) · [Current handoff](HANDOFF.md)

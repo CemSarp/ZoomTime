@@ -12,7 +12,7 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 | TypeScript, plain HTML/CSS, maintained Forge Webpack template | Typed boundaries and maintained packaging without an unnecessary UI framework. Forge 8 calls the template `--template=webpack --typescript`. |
 | macOS 14+, separate arm64/x64 packages | Both Macs meet this floor; distribution must fit the actual processor. |
 | One BrowserWindow, renderer, peer connection, and persistent video elements | Mini mode must not reload/reacquire/renegotiate or depend on a large hidden window. |
-| Normal 900×600; mini 320×180; minimum mini 160×90 logical pixels | The view must be substantially smaller than FaceTime and freely resizable. Fit video without stretching; do not force an aspect ratio. The probe's normal minimum is 640×420 to keep its instruction/control area usable. |
+| Normal 900×600; mini 320×180; minimum mini 160×90 logical pixels | The view must be substantially smaller than FaceTime and freely resizable. Fit video without stretching; do not force an aspect ratio. The normal minimum is 640×420 to keep its instruction/control area usable. |
 | Partner-only mini view; muted self-preview in normal mode | The smallest view should devote space to the partner. |
 | Documented floating/full-screen workspace APIs | Achieve the central window requirement without extreme window levels or repeated focus stealing. |
 | Separate movie playback | No movie streaming, screen sharing, or synchronization subsystem is needed. |
@@ -38,6 +38,10 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 - Encrypted standard WebRTC media with authenticated signaling, verified HTTPS, and private signaling exposure. No custom cryptography.
 - Endpoint compromise and either participant independently recording remain outside the protection offered.
 
+## Implementation and release evidence
+
+On 2026-10-14 the user reported full-screen playback passing on their Mac only and explicitly requested continued software implementation. This revises the old stop-before-networking workflow: implement and test locally, while keeping the partner-Mac, actual two-network, downloaded-installation and long-session checks as release blockers. Never represent generated local media as that evidence. An observed failure on the actual networks still stops release under the agreed no-TURN architecture.
+
 ## Connectivity is a physical gate
 
 Private signaling reachability does not prove media reachability. Chromium ICE must find a usable route on the actual two networks. Inspect selected candidate-pair statistics; do not claim all media uses Tailscale from socket reachability.
@@ -46,7 +50,7 @@ Tailscale may use its encrypted DERP forwarding even though WebRTC has no TURN. 
 
 If the real two-network call cannot connect, stop this version and document the failure. Changing the no-TURN decision requires an explicit user revision. Free service terms, internet availability, device power, and sleep behavior cannot guarantee uninterrupted calls forever.
 
-## Pairing and signaling (future phases)
+## Pairing and signaling
 
 - Export/import invitation only through an explicit action. It contains a guest endpoint and secret credential; encoding is not encryption. Validate version, role, 32-byte credential shape, and approved `wss://…ts.net:8443/zoomtime` endpoint.
 - Credentials stay out of URLs, routine renderer state, logs, source, and packages.
@@ -55,7 +59,7 @@ If the real two-network call cannot connect, stop this version and document the 
 - Versioned text JSON messages: request/accept/reject/cancel, offer/answer, ICE, media state, hangup, reconnect state, actionable error.
 - Server assigns call ID. Negotiation generation rejects delayed events; identity comes from authentication, never message claims.
 - Maximum 64 KiB/message, no binary payloads or compression, 100 application messages/10 seconds/role.
-- Ring timeout 60 seconds; connect timeout 30 seconds; recovery 30 seconds.
+- Ring timeout 60 seconds; connect timeout 30 seconds; recovery 30 seconds. An outgoing request without a server call-ID acknowledgement also releases capture after 30 seconds; otherwise lost signaling could strand devices before the ring timer starts.
 - WebSocket heartbeat every 20 seconds; detect two missed replies.
 - Host creates offers regardless of caller. Concurrent matching requests combine into one call.
 - Queue early ICE until the relevant remote description is installed; reject invalid transitions and stale identifiers.
@@ -70,7 +74,7 @@ One persistent renderer across normal/mini transitions; no renderer reload or se
 
 Mini controls remain available on hover and keyboard focus and fit at 160×90: mute, camera, restore, hangup. Normal mode includes partner, muted self-preview, call controls, and status. Camera-off/stale/reconnecting must not masquerade as live video. Close/quit ends capture. Do not repeatedly steal movie keyboard focus.
 
-Phase 1 has no live media. Its view is explicitly synthetic with a moving image, frame count, renderer-session ID, and persistent elapsed time. No fake calling controls or fake connection status are shown.
+The historical 0.1.0 window probe used explicitly synthetic animation. Version 0.2.0 replaces it with persistent partner/self video and real calling controls. The renderer session ID and uptime remain diagnostic only; they do not claim a media connection.
 
 ## Failure behavior to preserve
 
@@ -98,6 +102,23 @@ Use headphones for initial tests; echo cancellation cannot guarantee removal of 
 ## Exclusions
 
 No group calls, chat, accounts database, recording, screen capture, analytics, movie streaming, playback synchronization, mobile apps, contact discovery, public deployment, hosted STUN/TURN, custom codecs/cryptography, or automatic updates.
+
+## Module ownership and lifecycle reasons
+
+| Module | Responsibility and reason |
+| --- | --- |
+| protocol.ts | Strict, versioned endpoint/invitation/message validation shared by both sides, avoiding inconsistent trust boundaries. |
+| coordinator.ts | Server-assigned call IDs, host-offerer, transitions and deadlines. One authority resolves simultaneous requests and rejects stale negotiations. |
+| signaling.ts / signaling-client.ts | Main-owned authenticated WebSockets; private loopback binding, limits, heartbeat, TLS checking, reconnect. Credentials never enter the media renderer. |
+| pairing.ts | Atomic safeStorage ciphertext persistence; no plaintext fallback or bundled credentials. A failed reset stops the listener but reports that disk revocation is incomplete. |
+| calling-service.ts | Role/session/capture authorization, pairing/reconnect/revocation and OS interrupts. Cancelled IDs are remembered so delayed snapshots cannot revive them. |
+| main.ts / preload.ts | Single-instance window and OS integration; exact-frame IPC and media permissions. The bridge exposes operations rather than machine-wide capabilities. |
+| media-call.ts | One RTCPeerConnection, capture tracks and persistent views; epoch/generation guards stop late work. The answerer reuses offered transceivers to avoid one-way media. |
+| renderer.ts | Plain UI derived from network/call/media state; one partner video survives all mode changes. |
+
+Permissions are requested after Call/Accept; main grants a limited capture lease before a call ID exists. Local cancellation withdraws it. Active-call camera/device retries require an explicit action. Late capture results are stopped. Camera off stops its track; mute disables audio before any recovered track can reach an active sender. Quit/crash/close/sleep all interrupt the session; wake does not start a new one.
+
+Negotiation messages are serialized and bounded early ICE is queued until the matching remote description. Host generation increases once per outage, while sender/peer identity persists. Working media continues during a brief signaling outage; the 30-second recovery deadline prevents indefinite abandoned sessions. Statistics expose only coarse candidate-route labels, packet/frame counts, rates and RTT, never raw SDP/IP addresses or secrets.
 
 ## Sources
 

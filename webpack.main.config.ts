@@ -1,4 +1,5 @@
 import type { Configuration } from 'webpack';
+import { IgnorePlugin } from 'webpack';
 
 import { rules } from './webpack.rules';
 import { plugins } from './webpack.plugins';
@@ -13,7 +14,8 @@ export const mainConfig: Configuration = {
   module: {
     rules,
   },
-  plugins,
+  // ws's Node implementations avoid unnecessary native addons in both Mac architectures.
+  plugins: [...plugins, new IgnorePlugin({ resourceRegExp: /^(bufferutil|utf-8-validate)$/, contextRegExp: /node_modules[\\/]ws[\\/]lib/ })],
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
   },

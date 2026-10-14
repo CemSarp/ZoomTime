@@ -1,16 +1,16 @@
 # Iterative implementation guide
 
-Every phase reads ARCHITECTURE.md, AGENTS.md, and HANDOFF.md. Preserve decisions and their reasons, locked dependencies, focused tests, and actual verification evidence. Report changes, commands/results, pending physical evidence, risks, and next prerequisites. Do not advance through an unmet physical gate.
+Every phase reads ARCHITECTURE.md, AGENTS.md, and HANDOFF.md. Preserve decisions and their reasons, locked dependencies, focused tests, and actual verification evidence. Report changes, commands/results, pending physical evidence, risks, and next prerequisites. The user explicitly authorized continued software implementation on 2026-10-14 after their own-Mac full-screen success. Physical gates now block release acceptance; unavailable evidence must stay pending. An observed cross-network failure still blocks this no-TURN version.
 
 ## 0 — Contract
 
-Record the complete agreed constraints, reasons, rejected alternatives, trust boundaries, call lifecycle, direct-only limit, distribution tradeoffs, and reproducible commands. Do not configure live services. Complete.
+Record the complete agreed constraints, reasons, rejected alternatives, trust boundaries, call lifecycle, direct-only limit, distribution tradeoffs, and reproducible commands. Do not configure live services. Contract complete; implementation status is in HANDOFF.md.
 
 ## 1 — Window probe
 
 One sandboxed persistent renderer with labeled synthetic motion and frame counter. Normal/mini, 320×180 to 160×90, saved separate bounds, available-display recovery, floating across full-screen Spaces, accessible restore and keyboard controls, no repeated focus stealing. Test and package on arm64/x64. Actual full-screen playback on both Macs is the gate, not a mocked window flag.
 
-## 2 — Private signaling (requires phase 1 physical gate)
+## 2 — Private signaling
 
 Loopback server and guest WSS via private Serve; secure pairing storage/import/export/reset; one authenticated connection per role; versioned bounded JSON; heartbeat and limits. Tests cover authentication, invalid/oversized messages, competing clients, revocation. Inspect existing tailnet configuration; never reset unrelated services or enable Funnel. Prove authenticated test messages across two networks; this does not prove media.
 
@@ -18,7 +18,7 @@ Loopback server and guest WSS via private Serve; secure pairing storage/import/e
 
 `iceServers: []`, explicit camera/mic permission flow, packaged usage descriptions, 640×360/24 fps defaults, persistent partner video, muted self-preview, host-offerer, collision handling, queued early ICE, call/generation guards. Inspect actual selected route across two real networks. Run ≥60 minutes including mini/full screen. No STUN/TURN, SDP rewriting, or insecure flags to rescue failure.
 
-**Gate:** if media cannot connect, record evidence and stop. No phase 4 without verified calling.
+**Release gate:** if media cannot connect on the actual networks, record evidence and stop release work. The 2026-10-14 ruling permits local implementation/testing while the remote evidence is unavailable.
 
 ## 4 — Usable call UI
 

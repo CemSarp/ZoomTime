@@ -1,49 +1,43 @@
 # ZoomTime handoff
 
-Updated 2026-10-13. Scope: phases 0–1 of the approved plan.
+Updated 2026-10-14. Version 0.2.0 is an implemented calling **release candidate**. Physical release acceptance remains pending. This supersedes the earlier probe-only status; preserve the 0.1.0 archives as historical window-probe builds.
 
-## Status
+## Decision and evidence status
 
-- Architecture and iterative guide recorded. The folder was empty and not a Git repository at start.
-- Maintained Forge 8 Webpack/TypeScript scaffold; Electron 44.7.1 selected from npm metadata.
-- One secure BrowserWindow/persistent renderer, normal/mini resizing, floating/workspace APIs, independent remembered geometry, display recovery, synthetic animation and accessible restore/close implemented.
-- arm64 and x64 private packages built. No camera/mic acquisition, calling, or pairing in this build.
-- **Phase 1 physical gate pending on both actual Macs. No calling/signaling has been implemented.**
+The user reported normal/mini and full-screen playback passing on their Mac only, then explicitly requested continued implementation and agent-run tests. AGENTS.md and the 2026-10-14 plan record proceeding with software work while retaining partner-Mac, actual two-network and long-session tests as release blockers. An actual no-TURN connection failure still stops release. Do not ask again for permission to do already authorized local work or invent remote evidence.
 
-## Evidence
+No Tailscale installation was available here. No login, tailnet/Serve/grants, router/security settings or external publication was performed. No partner Mac is accessible. Network setup is documented in docs/NETWORK_SETUP.md, not claimed as executed.
 
-Local: macOS 26.6.2, arm64; Xcode 27.0; Node 24.21.0; npm 11.19.0.
-No partner Mac, actual two-network call, or movie session has been observed.
+## Implemented
 
-- `npm test`: 15 passing tests covering real geometry, trusted IPC predicates, asset allowlist, malformed settings, private atomic persistence and save failure.
-- `npm run typecheck`, `npm run lint`: pass. RED tests observed before implementation; review's continuity assertion also failed against the earlier bundle before its repair.
-- `npm start`: development window opens and native Mini/Escape restoration works. An initial EMFILE watcher failure was reproduced; explicit TypeScript exclusions for node_modules, out and .webpack stop the checker watching generated packages/dependencies. Restart then succeeded, with renderer `678142f8` and advancing frames. Development app/server stopped after the check.
-- `npm run make:arm64`, `npm run make:x64`: succeed. `file` confirms arm64/x86_64 executable architectures. Both `codesign --verify --deep --strict` checks pass; minimum OS metadata is 14.0. Ad-hoc signing is not notarization or publisher verification.
-- `npm run test:packaged`: both real arm64 launches pass 15 check groups each, for 320×180 and 160×90. Renderer-owned UUID remains unchanged across mode changes; counters advance; controls fit native bounds; trusted Tab/Shift-Tab, Enter/Escape and mouse-hover events work. Sandboxed renderer has no Node globals; bridge keys restricted; CSP rejects eval/network/new windows; invalid modes rejected. Screenshots/JSON: `out/verification/`.
-- Camera/microphone **permission queries** return denied. A direct capture-denial experiment remained pending and was terminated; acquisition denial is unverified, not a passing media test. No capture code is present in the probe.
-- Native UI: normal→mini→Escape observed. Later renderer ID `eb4d0e72` started normally; mini counters advanced from 106 to 1,911 while a Chrome 155.0.8059.40 local canvas-video fixture entered native full screen. App-specific screenshots cannot establish composited overlay visibility; the full-screen visibility gate stays pending. Safari fixture was also tried without conclusive visibility evidence. Test tabs and local server were closed.
-- Independent whole-change review found two verification gaps; fixed renderer-owned identity and minimum-size trusted keyboard/hover checks, plus HTML language. No confirmed exploitable IPC defect was identified. This limited review is not the future calling/security milestone.
+- One persistent sandboxed BrowserWindow/renderer/video view. Independent normal/mini bounds, 320×180 default and 160×90 minimum, floating/full-screen workspace APIs, display clamping, hover/focus controls, native restore shortcuts and single-instance handoff.
+- Plain TypeScript/HTML/CSS calling interface with explicit pairing, Call/Accept/Reject/Cancel, mute/camera, audio-only fallback, default-device recovery, hangup, and redacted diagnostics.
+- Main-owned encrypted safeStorage pairing; separate random 32-byte role credentials, explicit clipboard invitation, strict canonical WSS endpoint, atomic private ciphertext files, no plaintext fallback. Reset revokes after successful save; a failed save stops host/capture and reports incomplete disk revocation.
+- Loopback-only authenticated WebSocket coordinator on 127.0.0.1:47831; guest WSS through private Tailscale Serve 8443 /zoomtime. Text JSON only, 64 KiB, compression off, 100 application messages/10 seconds/role across reconnects, one active connection per role, heartbeat20s/two missed replies.
+- Real WebRTC with iceServers: [], host-only offers, call IDs/generations, queued early ICE, explicit capture, late-result guards, camera-track release, mute-preserving replacement and idempotent cleanup. Ring60s, connect30s, request acknowledgement30s, media debounce5s, one restart/outage and recovery30s. No healthy-call duration deadline.
+- Sleep/wake/crash/close/quit interrupt the session; wake never silently reacquires devices. No recording, screen capture, analytics, automatic update, FaceTime, STUN/TURN or hosted provider.
+- Electron44.7.1 / Forge8.0.1 / TypeScript6.0.3 with exact lockfile. ws8.22.0 is the only runtime npm dependency. Optional ws native accelerators are ignored with its supported JS/Node fallback.
 
-## Dependency advisories
+Read docs/ARCHITECTURE.md for every decision's reason and source boundaries. Main/preload own secrets/permissions; renderer owns media. Do not turn these ordinary modules into a generic backend/plugin framework.
 
-`npm audit --omit=dev --json`: zero vulnerabilities. Full `npm audit --json`: eight dependency advisories (six high, two moderate), exits 1. `braces` nested-pattern denial of service propagates through `chokidar`, `micromatch`, `http-proxy-middleware`, `webpack-dev-server`, and Forge's Webpack plugin. `uuid` buffer-check advisory propagates through `sockjs`. The current app package contains only bundled app code, styles/HTML, preload and package metadata; these dev-server packages are absent. No external patterns/proxy inputs are accepted by this project; the dev server is loopback-only with hot reload/client disabled. This limits exposure, but it does not declare the advisories fixed. Do not browse untrusted content while a development server is running. npm's suggested Forge 0.0.2 downgrade is not a safe maintained-tooling remedy. Recheck upstream updates before development resumes.
+## Verification
 
-Electron/Chromium still needs periodic security updates; zero production npm advisories alone cannot establish engine security.
+Local Mac17,8 / M5 Pro, arm64, macOS26.6.2; Node24.21.0/npm11.19.0/Xcode27.0. `npm test`:43 pass. Typecheck/lint pass. Real local WebRTC suite:pass in132.3s, including actual positive/negative getUserMedia permission flow using generated test devices, bidirectional generated media, early/stale ICE, identity continuity across resize/socket recovery/ICE restart, mute/camera/devices, late cancellation, explicit audio-only/mic failure, lost-request30s cleanup, second call, frozen-video detection/one restart/30s recovery cleanup, and real60s ringing cleanup.
 
-## Artifacts and reproducibility
+Actual arm64 packaged checks pass20 groups at each mini size, including Node/CSP/navigation/IPC/capture denial, duplicate instance, persistent renderer/video, hover/keyboard/geometry, actual safeStorage encrypt/decrypt and authenticated host/reset. Native endpoint Paste failed before the Edit-role repair and succeeded afterward; Mini/Escape also repeated. Capture hardware was not used. Full detail, evidence paths, advisories and limits: docs/VERIFICATION.md. Read-only requested review: docs/REVIEW.md, no outstanding findings.
 
-Archives: `out/make/zip/darwin/{arm64,x64}/ZoomTime-darwin-{arm64,x64}-0.1.0.zip`. Final source revision, architecture, exact build commands, dependency pins/lock hash and SHA-256 are recorded by `npm run checksums` in `out/distribution/build-manifest.json` and `SHA256SUMS`. Build one architecture at a time. Use the manifest's revision to reproduce; artifacts and personal preferences are Git-ignored.
+Reproduced problems repaired: one-way answerer media, acknowledgement signaling feedback, muted audio replacement, startup/reset listener race, retry/reset failure capture authorization, cancelled-call revival, lost initial request device leak, proxy503 misclassified as pairing failure, and native endpoint paste.
 
-Not verified: girlfriend's installation, actual movie service visibility on either Mac, QuickTime, monitor removal/scaling, physical Space switching, Intel execution, downloaded Gatekeeper approval/update, capture-denial execution, future Keychain/calling/recovery, two-network connection, long calls. A native bundle running locally does not prove a quarantined downloaded install.
+## Packages and reproduction
 
-## Rulings
+Build sequentially: npm run make:arm64; npm run test:packaged; npm run make:x64; npm run checksums. The version0.2.0 ZIPs are under out/make/zip/darwin/{arm64,x64}; exact SHA-256/source/lock/toolchain/commands are in out/distribution/0.2.0. Keep out and personal profiles/secrets ignored. Use the manifest's source revision to reproduce. x64 compilation/signature checks do not mean Intel execution was tested.
 
-- Fresh project: work in this user-specified empty workspace on a new feature branch; no redundant worktree or existing branch to protect.
-- Forge 8 renamed the template flags to `--template=webpack --typescript`; preserve the requested maintained TypeScript/Webpack approach.
-- The full plan is already approved. Implement directly; do not create an additional design-permission loop.
-- Preserve gate order: lack of both-Mac physical evidence means deliver phase 1 artifacts and stop before networking, not pretend the full app is done.
-- Ad-hoc signing uses the supported non-hardened-runtime profile: the packaged smoke reproduced a dyld Team-ID/library-validation failure with hardened runtime. Only JIT entitlement is included in the probe, removing the signer's unnecessary camera/location/USB defaults. Renderer sandbox/isolation and OS Gatekeeper remain enforced. Cost: this private build lacks hardened-runtime protection and publisher identity; revisiting distribution signing is required before public use.
+Private ad-hoc signing uses JIT/camera/audio-input entitlements, with no hardened runtime because its Team-ID/library validation rejected the ad-hoc Electron framework in an observed probe test. Sandboxing/isolation, TLS, Gatekeeper and ASAR integrity remain enforced. No paid certificate/notarization or automatic update. Expect possible per-app trust and Keychain/permission prompts on downloaded builds/updates; never disable protections globally.
 
-## Resume
+## Remaining work requires actual external evidence
 
-Read AGENTS.md, docs/ARCHITECTURE.md, docs/ITERATIVE_GUIDE.md and the implementation plan. Share the matching probe zip and checksum; use docs/MANUAL_TESTS.md on both Macs with the actual movie players. Record results, then proceed to private signaling only after the window gate passes. No system/Tailscale settings have been changed.
+Follow docs/ACCEPTANCE.md on both actual Macs after the private network is configured. Required: guest downloaded clean install/update; both-network hardware audio/video and observed ICE route; actual movie full-screen/Spaces/display behavior; ≥60-minute then three-hour session with measured memory/CPU/bandwidth/thermal behavior; routing/device changes, sleep/wake/outages/host departure and second-call/device-LED cleanup. Do not replace these with clock advancement or generated media. If the actual networks fail, preserve evidence and require an explicit architecture revision before adding any relay/service.
+
+Runtime npm audit:0 advisories. Full audit:8 unresolved development advisories (6high/2moderate), documented with actual exposure; do not blindly downgrade Forge to0.0.2. Keep Electron/Chromium updated and rerun connection, permissions, package and full-screen checks after changes.
+
+Historical baseline: c851098 contained the 0.1.0 window probe;15 tests and both package sizes passed. It had no calling. That is historical evidence only; current candidate behavior/results above supersede those counts/status.

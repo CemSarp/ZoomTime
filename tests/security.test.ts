@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isTrustedIpc, isWindowMode, assetPath } from '../src/security.ts';
+import { isTrustedIpc, isWindowMode, assetPath, allowCallMedia } from '../src/security.ts';
 
 const expected = 'zoomtime://app/main_window/index.html';
 test('only the exact app main-frame URL can invoke window commands', () => {
@@ -10,6 +10,15 @@ test('only the exact app main-frame URL can invoke window commands', () => {
     assert.equal(isTrustedIpc(url, expected, true), false);
   }
   assert.equal(isTrustedIpc(expected, expected, false), false);
+});
+test('only the trusted main frame can use camera/microphone during explicit call authorization', () => {
+  assert.equal(allowCallMedia('media', expected, expected, true, true, ['audio', 'video']), true);
+  for (const args of [ ['media', expected, expected, true, false, ['audio']],
+    ['media', expected, expected, false, true, ['video']], ['display-capture', expected, expected, true, true, ['video']],
+    ['media', 'https://evil.test', expected, true, true, ['audio']], ['media', expected, expected, true, true, ['screen']],
+    ['media', expected, expected, true, true, []] ] as [string, string, string, boolean, boolean, string[]][]) {
+    assert.equal(allowCallMedia(...args), false);
+  }
 });
 test('IPC accepts only the two supported modes', () => {
   assert.equal(isWindowMode('mini'), true);

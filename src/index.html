@@ -1,31 +1,50 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; media-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'" />
-    <title>ZoomTime — Window test</title>
-  </head>
-  <body>
-    <header class="titlebar"><strong>ZoomTime</strong><span>Private • just you two</span></header>
-    <main>
-      <section class="intro"><p class="eyebrow">FIRST MILESTONE</p><h1>A little closer.</h1>
-        <p>Try a small floating window while your movie plays full screen.</p></section>
-      <section class="stage" aria-label="Synthetic animated window test">
-        <canvas id="probe" width="640" height="360" aria-label="Synthetic moving circles. This is not a live call."></canvas>
-        <div class="probe-label"><span class="dot" aria-hidden="true"></span><span>Synthetic window test</span></div>
-        <div class="live-count"><span id="elapsed">00:00</span><span>Frames <span id="frames">0</span></span></div>
-        <div class="mini-controls" role="group" aria-label="Window controls">
-          <button id="restore" type="button" aria-label="Restore normal window" title="Restore normal window (Escape)">↗</button>
-          <button id="close" type="button" aria-label="Close window test" title="Close window test">×</button>
-        </div>
-      </section>
-      <section class="instructions"><div><h2>Keep this in view</h2><p>Open mini mode, then play your movie full screen. The circles and frame count should keep moving.</p></div>
-        <button id="mini" type="button">Open mini mode <span aria-hidden="true">↘</span></button></section>
-      <footer><span id="mode-status" role="status">Normal mode</span><span id="size">900 × 600</span><span>Session <span id="session">—</span></span></footer>
-      <p class="note">No camera, microphone, or call connection in this milestone. ⌘⇧M toggles mini mode.</p>
-      <p id="preferences" class="notice" role="status" hidden>Window preferences could not be read or saved. The window test still works; restart to retry.</p>
-      <p id="error" class="notice" role="alert"></p>
-    </main>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; media-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'" />
+  <title>ZoomTime</title>
+</head>
+<body>
+  <header class="titlebar"><strong>ZoomTime</strong><span>Just you two.</span></header>
+  <main>
+    <div class="heading"><div><p class="eyebrow">A LITTLE CLOSER</p><h1>Your evening, together.</h1></div><span id="status" role="status">Pair your Macs</span></div>
+    <section class="stage" aria-label="Partner video">
+      <video id="remote" autoplay playsinline disablepictureinpicture></video>
+      <div id="empty"><span class="avatar" aria-hidden="true">♡</span><h2 id="partner-title">A window for the two of you.</h2><p id="partner-detail">Pair your Macs, then start a private call.</p></div>
+      <video id="local" class="self-preview" autoplay muted playsinline disablepictureinpicture aria-label="Your muted self-preview" hidden></video>
+      <span id="mini-status" role="status">Ready when you are</span>
+      <div class="mini-controls" role="group" aria-label="Call and window controls">
+        <button id="mini-mute" type="button" title="Mute microphone" aria-label="Mute microphone" disabled>Mic</button>
+        <button id="mini-camera" type="button" title="Turn camera off" aria-label="Turn camera off" disabled>Cam</button>
+        <button id="restore" type="button" title="Restore normal window (Escape)" aria-label="Restore normal window">↗</button>
+        <button id="close" type="button" title="Close ZoomTime" aria-label="Close ZoomTime">×</button>
+      </div>
+    </section>
+    <div class="controls" role="group" aria-label="Call controls">
+      <button id="call" class="primary" type="button" disabled>Call your partner</button>
+      <button id="accept" class="primary" type="button" hidden>Accept call</button>
+      <button id="reject" type="button" hidden>Reject</button>
+      <button id="cancel" type="button" hidden>Cancel</button>
+      <button id="mute" type="button" hidden>Mute microphone</button>
+      <button id="camera" type="button" hidden>Turn camera off</button>
+      <button id="hangup" class="danger" type="button" hidden>End call</button>
+      <span class="spacer"></span><button id="mini" type="button">Open mini mode ↘</button>
+    </div>
+    <p id="error" class="notice" role="alert" hidden></p>
+    <div class="recovery"><button id="audio-only" type="button" hidden>Try microphone only</button><button id="devices" type="button" hidden>Recover devices</button><button id="resume-audio" type="button" hidden>Resume audio</button></div>
+    <section id="onboarding" class="pairing">
+      <h2>One private connection.</h2><p>Install Tailscale on both Macs. Your Mac hosts; your partner pastes its invitation.</p>
+      <form id="host-form"><label for="endpoint">Your private Tailscale endpoint</label><div class="row"><input id="endpoint" type="url" maxlength="512" autocomplete="off" spellcheck="false" placeholder="wss://your-mac.your-tailnet.ts.net:8443/zoomtime" required /><button id="host" type="submit">Set up this Mac as host</button></div></form>
+      <button id="import" type="button">Paste partner's invitation</button>
+      <p class="small">The host needs private Tailscale Serve on port 8443 → localhost:47831. See README for setup. ZoomTime never configures your network automatically.</p>
+    </section>
+    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><span class="spacer"></span><button id="copy-invitation" type="button" hidden>Copy invitation</button><button id="retry" type="button">Retry connection</button><button id="reset" type="button">Reset pairing and end call</button></div></section>
+    <p id="toast" role="status" class="small"></p>
+    <details class="diagnostics"><summary>Connection diagnostics</summary><p>Session <span id="session">—</span> · App uptime <span id="elapsed">00:00</span> · Window <span id="size">900 × 600</span></p><pre id="statistics">No active media connection.</pre></details>
+    <p id="preferences" class="notice" role="status" hidden>Window preferences could not be saved. Restart to retry.</p>
+    <footer>Private build · no recording · each Mac plays its own movie · ⌘⇧M toggles mini mode</footer>
+  </main>
+</body>
 </html>

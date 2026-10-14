@@ -16,3 +16,7 @@ export function assetPath(url: string): string | null {
 
 export const CONTENT_SECURITY_POLICY = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; media-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
 export const PROBE_PERMISSIONS_POLICY = 'camera=(), microphone=(), display-capture=()';
+export const CALL_PERMISSIONS_POLICY = 'camera=(self), microphone=(self), display-capture=()';
+export function allowCallMedia(permission: string, url: string, expected: string, mainFrame: boolean, authorized: boolean, types: string[]): boolean {
+  return authorized && isTrustedIpc(url, expected, mainFrame) && permission === 'media' && types.length > 0 && types.every(type => type === 'audio' || type === 'video');
+}
