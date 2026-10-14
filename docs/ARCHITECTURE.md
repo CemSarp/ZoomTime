@@ -25,7 +25,9 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 | Prefer 640×360 at 24 fps, normal speech-processing constraints | Appropriate for long calls in a tiny window; allow ordinary codec negotiation. |
 | System-default devices initially | Avoid a device-management subsystem; support explicit reacquisition after disappearance. |
 | Settings and pairing only; no database/history/analytics/recording | Retain only what this private app needs. |
-| Privately shared unnotarized packages; manual updates | No paid Apple membership or update server; expect per-app trust/Keychain/permission prompts. |
+| Unnotarized Mac packages; GitHub prerelease downloads; manual updates | No paid Apple membership or update server; expect per-app trust/Keychain/permission prompts. The user requested GitHub downloads on2026-10-14; the existing public repository is reused. |
+
+The two people use separate Tailscale identities: invite the guest into the host’s tailnet rather than sharing a login. This preserves independent identity and revocation. GitHub hosts the app downloads/source, not the signaling service; pairing credentials and personal network configuration are never published.
 
 ## Trust boundaries and components
 

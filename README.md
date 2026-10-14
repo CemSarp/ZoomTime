@@ -6,9 +6,14 @@ A private two-person Mac calling app with a small, resizable floating window. Ea
 
 ## Install
 
+**[Download ZoomTime 0.2.0 for Mac](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0)** — open Assets and choose Apple Silicon (arm64) or Intel (x64). Download the app ZIP, not Source code.
+
+**[Simple setup: your Mac + your friend’s Mac](docs/NETWORK_SETUP.md)** — separate Tailscale accounts, one shared network, host-only setup, then ZoomTime pairing.
+
+
 macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
-1. Choose `out/make/zip/darwin/arm64/ZoomTime-darwin-arm64-0.2.0.zip` or the matching x64 archive.
+1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
 2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in `out/distribution/0.2.0/SHA256SUMS`. Send the checksum with the archive. From this repository: `shasum -a 256 -c out/distribution/0.2.0/SHA256SUMS`.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.

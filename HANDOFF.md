@@ -12,7 +12,7 @@ New ad-hoc signatures caused Keychain access to exceed the original test deadlin
 
 The user reported normal/mini and full-screen playback passing on their Mac only, then explicitly requested continued implementation and agent-run tests. AGENTS.md and the 2026-10-14 plan record proceeding with software work while retaining partner-Mac, actual two-network and long-session tests as release blockers. An actual no-TURN connection failure still stops release. Do not ask again for permission to do already authorized local work or invent remote evidence.
 
-No Tailscale installation was available here. No login, tailnet/Serve/grants, router/security settings or external publication was performed. No partner Mac is accessible. Network setup is documented in docs/NETWORK_SETUP.md, not claimed as executed.
+Tailscale was absent during the original build tests. The user subsequently installed it; a fresh read-only check on2026-10-14 found its CLI available, backend Running, self online and Serve unconfigured. No login, Serve/grants/router changes or invitations were performed by the agent. The existing public CemSarp/ZoomTime repository is now the user-authorized download destination; source is already on main/origin/main. Publish only a prerelease while physical acceptance remains pending. The simpler host/guest walkthrough is docs/NETWORK_SETUP.md.
 
 ## Implemented
 
