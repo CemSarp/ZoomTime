@@ -1,5 +1,20 @@
 # Verification evidence
 
+## 0.3.2 update candidate — 2026-10-15
+
+- `npm test`: **65 pass**, no failures/skips. Eleven update tests cover numeric version/no downgrade, architecture, drafts/prereleases, exact URLs and digests, malformed/oversized metadata, rate limits, HTTPS redirect boundaries, retries/serialization, truncated/excess/corrupt bytes, quarantine/readback and changed-file rejection before Finder.
+- `npm run typecheck`, `npm run lint`, `git diff --check`: pass. Production audit0; dependency pins unchanged.
+- Live GitHub API: onlyv0.2.0, so this local0.3.2 correctly reports no newer published build. Existing release metadata/download validated with normal TLS and no token.
+- Real download fixture: existing arm64v0.2.0 ZIP,127113436bytes,5.646s, SHA-256 matches GitHub, quarantine retained0281. Isolated under ignored out/verification/update-download; never installed or substituted for the current app. Evidence:out/verification/update-download.json.
+- Full media suite was not repeated: media/calling source is unchanged. The prior0.3.1 real-WebRTC/generated-media evidence remains historical; packaged regression checks still exercise generated device checks, permission revocation, native full-screen/mini, secure IPC/CSP, Keychain/auth/reset.
+
+- Final `npm run test:packaged`: **28 groups pass at both mini sizes**; the normal-size run checks the actual Settings button against GitHub and shows the installed0.3.2/no-newer status. Startup stays idle and unverified downloads cannot be revealed. Existing generated-device checks, permission cleanup, native full-screen→mini/Dock, secure origin/Node/CSP/navigation/IPC, authenticated host/Keychain and reset still pass. Settings screenshot inspected; update controls/status are visible. No physical camera/mic was acquired.
+- Both `npm run make:arm64` and `npm run make:x64` pass. Deep/strict signatures, architecture, version/bundle ID/macOS floor, privacy descriptions, security fuses, minimal six-file ASAR payload, equality to final compiled bundles and ZIP integrity all pass. Intel was built, not executed. Versioned evidence:out/verification/packaged-smoke-0.3.2.json, packaged-smoke-minimum-0.3.2.json, artifacts-0.3.2.json. The local reproducible check is out/verification/verify-artifacts-0.3.2.mjs.
+- Full fresh npm audit still reports8 development advisories (6high/2moderate); production audit0. No dependency changes or security bypasses. Distribution hashes/manifest/portable INSTALL are under out/distribution/0.3.2.
+
+No new GitHub release or tailnet configuration change. Pending: downloaded app replacement/approval and profile preservation on the partner Mac, Intel execution, real cross-network/no-TURN media and long movie session. Local API/download checks cannot establish those outcomes.
+
+
 
 ## 0.3.1 local candidate — 2026-10-15
 

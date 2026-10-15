@@ -11,6 +11,7 @@ import { clampBounds, defaultBounds, leaveFullScreen, changeFullScreen, type Win
 import { assetPath, CONTENT_SECURITY_POLICY, CALL_PERMISSIONS_POLICY, allowCallMedia, isTrustedIpc, isWindowMode } from './security.ts';
 import { readSettings, writeSettings } from './settings.ts';
 import type { WindowState } from './bridge.ts';
+import { Updates } from './updates.ts';
 import { CallingService } from './calling-service.ts';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'zoomtime', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -121,6 +122,13 @@ async function createWindow(): Promise<void> {
   const calling = new CallingService(join(app.getPath('userData'), 'pairing.bin'), safeStorage, event => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('call:event', event);
   });
+  const updates = new Updates(app.getVersion(), process.arch, app.getPath('downloads'), state => {
+    if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('updates:state', state);
+  });
+  ipcMain.handle('updates:state', event => { authorize(event); return updates.state; });
+  ipcMain.handle('updates:check', async event => { authorize(event); await updates.check(); });
+  ipcMain.handle('updates:download', async event => { authorize(event); await updates.download(); });
+  ipcMain.handle('updates:reveal', async event => { authorize(event); shell.showItemInFolder(await updates.verifiedPath()); });
   const exec = promisify(execFile);
   let setupPending = false;
   const tailscaleCommand = async (args: string[]): Promise<string> => {
@@ -229,7 +237,7 @@ async function createWindow(): Promise<void> {
   screen.on('display-removed', recoverDisplay);
   screen.on('display-metrics-changed', recoverDisplay);
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'ZoomTime', submenu: [{ label: 'Settings…', accelerator: 'CommandOrControl+,', click: () => { void queueWindow(restore).then(() => window.webContents.send('settings:open')).catch(windowError); } }, { type: 'separator' }, { role: 'quit' }] },
+    { label: 'ZoomTime', submenu: [{ label: 'Settings…', accelerator: 'CommandOrControl+,', click: () => { void queueWindow(restore).then(() => window.webContents.send('settings:open')).catch(windowError); } }, { label: 'Check for Updates…', click: () => { void queueWindow(restore).then(() => { window.webContents.send('settings:open'); return updates.check(); }).catch(windowError); } }, { type: 'separator' }, { role: 'quit' }] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'Window', submenu: [
       { label: 'Toggle mini mode', accelerator: 'CommandOrControl+Shift+M', click: () => { void queueWindow(() => setMode(mode === 'normal' ? 'mini' : 'normal')).catch(windowError); } },

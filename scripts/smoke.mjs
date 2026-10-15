@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { compareVersions } from '../src/updates.ts';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
@@ -80,7 +81,14 @@ async function smoke(minimum) {
     assert.equal(await evaluate('typeof require'), 'undefined');
     assert.equal(await evaluate('typeof process'), 'undefined');
     assert.equal(await evaluate('isSecureContext'), true);
-    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck'].sort());
+    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'onUpdateState'].sort());
+    const updater = await evaluate('window.zoomtime.getUpdateState()');
+    assert.equal(updater.status, 'idle', 'No network check runs at startup');
+    assert.equal(updater.currentVersion, JSON.parse(readFileSync('package.json','utf8')).version);
+    assert.deepEqual(Object.keys(updater).sort(), ['currentVersion','message','status']);
+    assert.equal(await evaluate('window.zoomtime.revealUpdate().then(()=>false,()=>true)'),true,'Unverified files cannot be revealed');
+    await evaluate('window.zoomtime.downloadUpdate()');
+    assert.equal((await evaluate('window.zoomtime.getUpdateState()')).status,'idle','Downloading requires an available newer release');
     assert.equal(await evaluate("window.zoomtime.authorizeCapture('call').then(()=>false,()=>true)"), true, 'Unpaired apps cannot authorize capture');
     assert.equal(await evaluate("window.zoomtime.sendSignal({v:1,type:'request'}).then(()=>false,()=>true)"), true, 'Unpaired apps cannot signal a call');
     assert.deepEqual(await evaluate("window.zoomtime.getCallingState().then(s=>Object.keys(s).sort())"), ['call','endpoint','error','network','peerOnline','role']);
@@ -236,6 +244,18 @@ async function smoke(minimum) {
 
       assert.equal(await evaluate("getComputedStyle(document.getElementById('open-settings')).backgroundColor==='rgba(0, 0, 0, 0)'"),false,'Settings has a visible button surface');
       assert.equal(await evaluate("document.getElementById('check-video').srcObject===null&&document.getElementById('check-listen').disabled"),true,'Opening settings never captures or enables voice monitoring');
+      assert.equal(await evaluate("document.getElementById('update-download').hidden&&document.getElementById('update-reveal').hidden"),true,'No update is downloaded implicitly');
+      await evaluate("document.getElementById('update-check').click()");
+      for (let attempt=0;attempt<200;attempt++) {
+        const update = await evaluate('window.zoomtime.getUpdateState()');
+        if (update.status !== 'checking' && update.status !== 'idle') break;
+        await delay(100);
+      }
+      const checkedUpdate = await evaluate('window.zoomtime.getUpdateState()');
+      assert.ok(['current','available'].includes(checkedUpdate.status),`Live GitHub check: ${checkedUpdate.message}`);
+      if (checkedUpdate.status === 'available') assert.equal(compareVersions(checkedUpdate.version,checkedUpdate.currentVersion),1,'Only a newer release can be offered');
+      else assert.match(checkedUpdate.message,/No newer published build/);
+      assert.equal(await evaluate("document.getElementById('update-status').textContent"),checkedUpdate.message);
       await screenshot('settings.png');
       await evaluate("document.getElementById('check-title').scrollIntoView({block:'start'})"); await screenshot('device-check-panel.png');
 
@@ -261,8 +281,9 @@ async function smoke(minimum) {
       packagedBundle: bundle, checks: ['bundled secure origin', 'no renderer Node', 'narrow bridge', 'production CSP',
         'blocked network/new window/navigation', 'invalid IPC rejected', 'unpaired capture and signaling denied', 'camera/microphone capture denied', 'renderer identity continuity', 'duplicate instance reuses renderer',
         minimum ? '160x90 mini' : '320x180 mini', 'controls fit native window', 'hover exposes controls', 'Tab reaches restore and close',
-        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation', 'explicit local device check, meter, monitor and cleanup (normal-size run)', 'red Reset and bordered Settings', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
+        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation', 'explicit local device check, meter, monitor and cleanup (normal-size run)', 'red Reset and bordered Settings', 'update IPC exposes no paths or arbitrary requests; no startup update/download', 'explicit Settings check reaches real GitHub without downgrade (normal-size run)', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
       directCaptureDenial: captureDenial === 'NotAllowedError' ? 'rejected with NotAllowedError before explicit call authorization' : `inconclusive: ${captureDenial}`,
+      liveUpdateCheck: minimum ? 'tested in normal-size run' : await evaluate('window.zoomtime.getUpdateState()'),
       physicalFullScreenGate: 'user reports own Mac passing; partner Mac pending', rendererSession };
     writeFileSync(join(output, minimum ? 'packaged-smoke-minimum.json' : 'packaged-smoke.json'), `${JSON.stringify(result, null, 2)}\n`);
     console.log(`Packaged smoke passed: ${result.checks.length} checks. Partner-Mac full-screen acceptance remains pending.`);

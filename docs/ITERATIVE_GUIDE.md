@@ -51,3 +51,8 @@ The user requested local-preview mirroring, optional resizable mini self-preview
 ## 0.3.1 device-check iteration
 
 User revised capture scope to allow an explicit local camera/microphone check before pairing. Verify the distinct permission lease cannot authorize calls, expires/revokes, and rejects overlapping calls; test live preview/meter, zero initial monitoring gain, explicit listen/off, cancellation/late tracks, failed permission recovery and settings/mini/lifecycle cleanup. Keep capture off when Settings opens. Verify red Reset and bordered Settings at compact/normal sizes. Use generated devices for automated tests; physical headphone routing remains pending. No recording or tailnet mutation.
+
+
+## 0.3.2 explicit GitHub update iteration
+
+User approved Check → verified download → guided Finder replacement. Test numeric versions/no downgrade, architecture selection, flagged prereleases, exact publisher URLs, invalid metadata, TLS/redirect boundary, digest/size failure, retry, serialized operations, no startup network/download and no raw URL/path bridge. Exercise the real GitHub API and an isolated real older-release download without installing/downgrading. Verify macOS quarantine is added and retained. Packaged UI must show installed version and explicit check results without loosening renderer networking. Rebuild both architectures, preserve old artifacts, and record source/checksums. Do not publish automatically; actual downloaded replacement, trust/Keychain behavior and partner-Mac execution remain pending.

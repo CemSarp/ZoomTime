@@ -1,8 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { WindowState, ZoomTimeBridge } from './bridge.ts';
+import type { UpdateState } from './updates.ts';
 import type { CallingEvent } from './calling-service.ts';
 
 const bridge: ZoomTimeBridge = {
+  getUpdateState: () => ipcRenderer.invoke('updates:state'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updates:download'),
+  revealUpdate: () => ipcRenderer.invoke('updates:reveal'),
+  onUpdateState: callback => {
+    const handler = (_event: Electron.IpcRendererEvent, state: UpdateState) => callback(state);
+    ipcRenderer.on('updates:state', handler);
+    return () => ipcRenderer.removeListener('updates:state', handler);
+  },
   getState: () => ipcRenderer.invoke('window:getState'),
   setMode: mode => ipcRenderer.invoke('window:setMode', mode),
   setPreferences: preferences => ipcRenderer.invoke('preferences:set', preferences),

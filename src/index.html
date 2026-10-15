@@ -69,6 +69,14 @@
       <label class="setting-row" for="check-listen"><span><strong>Listen to my microphone</strong><small>Use headphones to prevent speaker feedback. Listening starts only when you turn this on.</small></span><input id="check-listen" type="checkbox" role="switch" disabled /></label></div>
       <p id="check-error" class="notice" role="alert" hidden></p>
     </section>
+    <section class="settings-group" aria-labelledby="updates-title">
+      <h3 id="updates-title">App updates</h3>
+      <p id="update-version" class="setting-help"></p>
+      <p id="update-status" class="setting-help" role="status" aria-live="polite">Updates are checked only when you ask.</p>
+      <progress id="update-progress" max="100" value="0" aria-label="Update download progress" hidden></progress>
+      <div class="row"><button id="update-check" type="button">Check for updates</button><button id="update-download" type="button" hidden>Download update</button><button id="update-reveal" type="button" hidden>Show verified download in Finder</button></div>
+      <p class="setting-help">From CemSarp/ZoomTime on GitHub, including clearly labeled prereleases. Downloads are checksum-verified. Quit before replacing the app; pairing and preferences stay on this Mac. macOS may ask you to approve this private build.</p>
+    </section>
     <p id="settings-error" class="notice" role="alert" hidden></p>
     <p class="setting-help">Each Mac plays its own movie. ⌘⇧M toggles the floating mini window. Escape restores it or exits full screen.</p>
   </dialog>

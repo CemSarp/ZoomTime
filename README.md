@@ -2,7 +2,13 @@
 
 A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
 
-**Version 0.3.1 is the current local calling candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+**Version 0.3.2 is the current local calling candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+
+## What changed in 0.3.2
+
+Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**. A newer GitHub build offers **Download update**, then **Show verified download in Finder**. End your call and quit, open the ZIP, drag ZoomTime into Applications and choose **Replace**, then reopen it. The app selects Apple Silicon/Intel automatically, verifies SHA-256 and retains macOS quarantine. Pairing/preferences stay in your profile. No background checks, automatic replacement, downgrade or extra service. Clearly labeled prereleases are included because this private project distributes candidates that way. See [updates and installation](docs/UPDATES.md).
+
+You must install this build once to get the feature. GitHub currently has only0.2.0; the check correctly reports no newer published build until a newer version is published. This local build has not been published automatically.
 
 ## What changed in 0.3.1
 
@@ -21,7 +27,7 @@ Open **Settings… → Camera & microphone check → Start camera & mic check** 
 
 ## Install
 
-The new 0.3.1 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have **not been published**. The existing GitHub download below remains 0.2.0 and does not include these changes.
+The new 0.3.2 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have **not been published**. The existing GitHub download below remains 0.2.0 and does not include these changes.
 
 **[Download ZoomTime 0.2.0 for Mac](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0)** — open Assets and choose Apple Silicon (arm64) or Intel (x64). Download the app ZIP, not Source code.
 
@@ -31,11 +37,11 @@ The new 0.3.1 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have
 macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
 1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
-2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/SHA256SUMS). For the new local builds, use `out/distribution/0.3.1/SHA256SUMS` instead; never compare different versions’ hashes.
+2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/SHA256SUMS). For the new local builds, use `out/distribution/0.3.2/SHA256SUMS` instead; never compare different versions’ hashes.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
 
-The previous 0.1.0 probe archives remain available; keep them while testing replacements. Updates are manual. The stable name/bundle identifier helps preserve settings; ad-hoc signing can still cause Keychain or permission prompts on updates. There is no publisher identity or hardened runtime in this free private distribution profile. Renderer sandbox/isolation, CSP, TLS verification and ASAR integrity remain enabled.
+The previous 0.1.0 probe archives remain available; keep them while testing replacements. Update downloads are user-triggered; replacement remains an explicit Finder step. The stable name/bundle identifier helps preserve settings; ad-hoc signing can still cause Keychain or permission prompts on updates. There is no publisher identity or hardened runtime in this free private distribution profile. Renderer sandbox/isolation, CSP, TLS verification and ASAR integrity remain enabled.
 
 ## Pair and call
 

@@ -1,3 +1,4 @@
+import type { UpdateState } from './updates.ts';
 import type { Preferences } from './preferences.ts';
 import type { Bounds, WindowMode } from './window-state.ts';
 import type { CallingEvent, CallingState, CaptureAction } from './calling-service.ts';
@@ -11,6 +12,11 @@ export interface WindowState {
   minimized: boolean;
 }
 export interface ZoomTimeBridge {
+  getUpdateState(): Promise<UpdateState>;
+  checkForUpdates(): Promise<void>;
+  downloadUpdate(): Promise<void>;
+  revealUpdate(): Promise<void>;
+  onUpdateState(callback: (state: UpdateState) => void): () => void;
   getState(): Promise<WindowState>;
   setMode(mode: WindowMode): Promise<WindowState>;
   setPreferences(preferences: Preferences): Promise<WindowState>;

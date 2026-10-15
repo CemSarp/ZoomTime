@@ -3,6 +3,7 @@ import { decodePreferences, type Preferences, type VideoQuality } from './prefer
 import { DeviceCheck } from './device-check.ts';
 import { MediaCall } from './media-call.ts';
 import type { CallingState } from './calling-service.ts';
+import type { UpdateState } from './updates.ts';
 import type { WindowState } from './bridge.ts';
 const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = stylesheet; document.head.append(link);
 const element = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -77,6 +78,17 @@ function renderCheck(): void {
   const status = state.capturing ? 'Waiting for camera and microphone permission…' : state.active ? state.listening ? 'Devices on · listening through your output device · use headphones.' : 'Devices on · speak to check the meter. Listening is off.' : 'Devices are off.';
   if (element('check-status').textContent !== status) element('check-status').textContent = status;
   element('check-error').textContent = state.error; show('check-error', !!state.error);
+}
+function applyUpdate(state: UpdateState): void {
+  element('update-version').textContent = `Installed version ${state.currentVersion}`;
+  element('update-status').textContent = state.message;
+  if (state.status === 'checking' && settings.open) element('updates-title').scrollIntoView({ block: 'start' });
+  const busy = state.status === 'checking' || state.status === 'downloading';
+  disabled('update-check', busy);
+  show('update-download', state.status === 'available');
+  show('update-reveal', state.status === 'ready');
+  show('update-progress', state.status === 'downloading');
+  element<HTMLProgressElement>('update-progress').value = state.percent ?? 0;
 }
 function openSettings(): void { show('settings-error', false); renderCheck(); if (!settings.open) settings.showModal(); }
 function applyCalling(state: CallingState): void { calling = state; if (state.call && (check.state.active || check.state.capturing)) void check.stop('Device check stopped for the call.'); media.handleState(state); render(); }
@@ -153,6 +165,10 @@ element('restore').addEventListener('click', () => run(() => window.zoomtime.res
 element('close').addEventListener('click', () => { if (calling.call || media.state.capturing || local.srcObject) media.hangup(); else run(() => window.zoomtime.close()); });
 element('minimize-window').addEventListener('click', () => run(() => window.zoomtime.minimize()));
 element('open-settings').addEventListener('click', openSettings);
+element('update-check').addEventListener('click', () => run(() => window.zoomtime.checkForUpdates()));
+element('update-download').addEventListener('click', () => run(() => window.zoomtime.downloadUpdate()));
+element('update-reveal').addEventListener('click', () => run(() => window.zoomtime.revealUpdate()));
+window.zoomtime.onUpdateState(applyUpdate);
 settings.addEventListener('close', () => { if (!settings.open) void check.stop(); });
 settings.addEventListener('cancel', () => { void check.stop(); });
 element('check-start').addEventListener('click', () => { void check.start(preferences.quality); });
@@ -187,6 +203,6 @@ remote.addEventListener('loadeddata', render);
 window.addEventListener('beforeunload', () => { void check.stop(); media.stop(); });
 window.zoomtime.onState(applyWindow);
 window.zoomtime.onCallEvent(event => { if (event.type === 'state') applyCalling(event.state); else if (event.type === 'stop') { if (check.state.active || check.state.capturing) void check.stop(event.reason); media.stop(event.reason); } else if (event.type === 'check-stop') void check.stop(event.reason); else void media.handleSignal(event.message); });
-run(async () => { applyWindow(await window.zoomtime.getState()); applyCalling(await window.zoomtime.getCallingState()); });
+run(async () => { applyWindow(await window.zoomtime.getState()); applyCalling(await window.zoomtime.getCallingState()); applyUpdate(await window.zoomtime.getUpdateState()); });
 setInterval(() => { const seconds = Math.floor((Date.now() - startedAt) / 1000); element('elapsed').textContent = `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`; }, 1000);
 render();
