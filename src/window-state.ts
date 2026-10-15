@@ -34,3 +34,27 @@ export function decodeBounds(value: unknown): SavedBounds {
   const data = value as Record<string, unknown>;
   return { version: 1, normal: parse(data.normal), mini: parse(data.mini) };
 }
+
+interface FullScreenWindow {
+  isFullScreen(): boolean;
+  isSimpleFullScreen(): boolean;
+  setFullScreen(enabled: boolean): void;
+  setSimpleFullScreen(enabled: boolean): void;
+  once(event: 'leave-full-screen' | 'enter-full-screen', callback: () => void): unknown;
+  removeListener(event: 'leave-full-screen' | 'enter-full-screen', callback: () => void): unknown;
+}
+export async function leaveFullScreen(window: FullScreenWindow): Promise<void> {
+  return changeFullScreen(window, false);
+}
+export async function changeFullScreen(window: FullScreenWindow, enabled: boolean): Promise<void> {
+  if (!enabled && window.isSimpleFullScreen()) window.setSimpleFullScreen(false);
+  if (window.isFullScreen() === enabled) return;
+  const event = enabled ? 'enter-full-screen' : 'leave-full-screen';
+  // macOS ignores resizing/minimization until its asynchronous Space transition ends.
+  await new Promise<void>((resolve, reject) => {
+    const done = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(() => { window.removeListener(event, done); reject(new Error('Full-screen transition timed out. Use Control–Command–F to leave full screen and retry.')); }, 10_000);
+    window.once(event, done);
+    try { window.setFullScreen(enabled); } catch (error) { clearTimeout(timer); window.removeListener(event, done); reject(error); }
+  });
+}

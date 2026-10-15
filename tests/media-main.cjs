@@ -7,7 +7,7 @@ const root = process.cwd();
 const startedAt=Date.now();
 const windows = new Map(), clients = new Map(), reports = new Map(), ready = new Set(), timers = new Set();
 const identityReports=new Map(),dropRequests=new Set(),pendingCaptures=new Set();let snapshot=new Map();
-const authorized=new Set(),permissionResults=new Map();
+const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map();
 const entry='zoomtime://app/main_window/index.html';
 protocol.registerSchemesAsPrivileged([{scheme:'zoomtime',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let server;
@@ -35,7 +35,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('harness:send', (event, message) => { const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0]; assert.ok(role); if(message.type==='request'&&dropRequests.delete(role))return; if(message.type in traffic[role])traffic[role][message.type]++; assert.equal(clients.get(role).send(message), true); });
   ipcMain.on('harness:result', (event, result) => {
     const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0];
-    if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); }
+    if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); if(result.type==='quality')qualityResults.set(role,result); }
   });
   for (const role of ['host', 'guest']) {
     const window = new BrowserWindow({ width: 400, height: 300, show: true, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: join(root, 'tests/media-preload.cjs') } });
@@ -66,6 +66,18 @@ app.whenReady().then(async () => {
   await report();
   for (const result of snapshot.values()) { assert.equal(result.peerState, 'connected'); assert.equal(result.liveTracks, 2); }
   const mediaStatistics=[...snapshot].map(([role,result])=>({role,stats:result.state.stats}));
+  action('host','use-device-video'); await wait(()=>reports.get('host')?.state?.stats?.captureHeight===720,'Initial HD camera preference reaches real generated getUserMedia track');
+  for (const [quality,width,height] of [['1080',1920,1080],['360',640,360],['720',1280,720]]) {
+    qualityResults.clear(); action('host',`quality${quality}`);
+    await wait(()=>qualityResults.has('host'),'Quality constraints complete');
+    assert.equal(qualityResults.get('host').capture.width,width); assert.equal(qualityResults.get('host').capture.height,height);
+    await report(); assert.equal(snapshot.get('host').samePeer,true); assert.equal(snapshot.get('host').liveTracks,2);
+  }
+  qualityResults.clear(); action('host','fail-quality'); await wait(()=>qualityResults.has('host'),'A camera quality failure is actionable');
+  assert.equal(qualityResults.get('host').failed,true); assert.equal(qualityResults.get('host').capture.height,720);
+  action('host','camera'); await wait(()=>server.coordinator.snapshot?.media.host.video===false,'Disable camera after failed quality change');
+  action('host','camera'); await wait(()=>reports.get('host')?.state?.stats?.captureHeight===720,'Failed quality must not become the preference for reacquired camera');
+  action('host','use-canvas-video'); await wait(()=>reports.get('host')?.state?.stats?.captureHeight===360,'Return to synthetic canvas for controlled freeze tests');
   const callId = server.coordinator.snapshot.id;
   windows.get('host').webContents.send('harness:event', { v:1, type:'ice', callId, generation:999, candidate:null });
   windows.get('host').setMinimumSize(160,90); windows.get('host').setBounds({width:160,height:90}); windows.get('host').setBounds({width:400,height:300});
@@ -119,7 +131,7 @@ app.whenReady().then(async () => {
   const output=join(root,'out/verification');mkdirSync(output,{recursive:true});
   writeFileSync(join(output,'media-integration.json'),JSON.stringify({timestamp:new Date().toISOString(),durationMs:Date.now()-startedAt,versions:process.versions,architecture:process.arch,
     generatedMedia:true,singleMac:true,iceServers:[],requestTimeoutMs,staleRecoveryMs,ringTimeoutMs:Date.now()-ringStarted,mediaStatistics,
-    checks:['real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released'],
+    checks:['real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released'],
     pending:['hardware capture/routing','actual two-Mac/two-network call','native full-screen movie on partner Mac','three-hour session','downloaded installation/update']},null,2)+'\n');
   console.log('MEDIA_TEST_PASS: real local WebRTC, bidirectional audio/video, early ICE, stale generation, persistent peers on resize/reconnect/ICE restart, camera off/on, mute preserved during recovery, outgoing/incoming late capture cancellation, explicit audio-only fallback, microphone denial, second call, real 60-second ring timeout and cleanup. Two-Mac/network/hardware acceptance remains untested.');
 }).catch(error => { console.error('MEDIA_TEST_FAIL:', error.message, JSON.stringify({ phase: server?.coordinator.snapshot?.phase, traffic, reports: [...reports] })); process.exitCode = 1; }).finally(async () => {

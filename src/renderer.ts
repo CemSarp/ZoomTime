@@ -1,4 +1,5 @@
 import stylesheet from './index.css';
+import { decodePreferences, type Preferences, type VideoQuality } from './preferences.ts';
 import { MediaCall } from './media-call.ts';
 import type { CallingState } from './calling-service.ts';
 import type { WindowState } from './bridge.ts';
@@ -9,6 +10,12 @@ const disabled = (id: string, value: boolean) => { element<HTMLButtonElement>(id
 const rendererSession = crypto.randomUUID(); document.body.dataset.rendererSession = rendererSession; element('session').textContent = rendererSession.slice(0, 8);
 const startedAt = Date.now(); let connectedAt: number | null = null;
 let windowState: WindowState | null = null;
+let preferences = decodePreferences(null);
+let settingsBusy = false;
+let resizingPreview = false;
+let preferencesTimer: ReturnType<typeof setTimeout> | undefined;
+const settings = element<HTMLDialogElement>('settings');
+const selfPreview = element<HTMLDivElement>('self-preview');
 let calling: CallingState = { role: null, endpoint: null, call: null, peerOnline: false, network: { state: 'offline', message: 'Pair your Macs to begin.' }, error: null };
 let action: 'call' | 'accept' = 'call'; let setupBusy = false; let uiError = ''; let playbackResumed = false;
 const remote = element<HTMLVideoElement>('remote'), local = element<HTMLVideoElement>('local');
@@ -17,12 +24,46 @@ function error(error: unknown): void { uiError = error instanceof Error ? error.
 function run(operation: () => Promise<unknown>): void { uiError = ''; void operation().catch(error); }
 async function setup(operation: () => Promise<void>): Promise<void> {
   if (setupBusy) return; setupBusy = true; uiError = ''; render();
-  try { await operation(); } catch (cause) { error(cause); } finally { setupBusy = false; render(); }
+  try { await operation(); } catch (cause) { element('toast').textContent = ''; error(cause); } finally { setupBusy = false; render(); }
 }
 function applyWindow(state: WindowState): void {
   windowState = state; document.body.dataset.mode = state.mode;
+  if (state.mode === 'mini' && settings.open) settings.close();
+  const changedQuality = preferences.quality !== state.preferences.quality;
+  preferences = state.preferences;
+  applyPreferences();
+  if (changedQuality) void media.setQuality(preferences.quality).catch(error);
   element('size').textContent = `${state.bounds.width} × ${state.bounds.height}`; show('preferences', state.preferencesError);
 }
+function applyPreferences(): void {
+  document.body.dataset.mirror = String(preferences.mirror);
+  document.body.dataset.miniSelf = String(preferences.miniSelf);
+  element<HTMLInputElement>('mirror').checked = preferences.mirror;
+  element<HTMLInputElement>('mini-self-setting').checked = preferences.miniSelf;
+  element<HTMLSelectElement>('quality').value = preferences.quality;
+  element<HTMLInputElement>('preview-size').value = String(preferences.previewSize);
+  selfPreview.style.width = `${preferences.previewSize}%`;
+  element('mini-self').setAttribute('aria-pressed', String(preferences.miniSelf));
+  element('mini-self').setAttribute('aria-label', preferences.miniSelf ? 'Hide your camera preview' : 'Show your camera preview');
+}
+async function updatePreferences(patch: Partial<Preferences>): Promise<void> {
+  if (settingsBusy) { applyPreferences(); return; }
+  clearTimeout(preferencesTimer);
+  const next = { ...preferences, ...patch };
+  settingsBusy = true;
+  for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self']) (element(id) as HTMLInputElement).disabled = true;
+  show('settings-error', false);
+  try {
+    await media.setQuality(next.quality);
+    applyWindow(await window.zoomtime.setPreferences(next));
+  } catch (cause) {
+    applyPreferences(); error(cause); element('settings-error').textContent = uiError; show('settings-error', true);
+  } finally {
+    settingsBusy = false;
+    for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self']) (element(id) as HTMLInputElement).disabled = false;
+  }
+}
+function openSettings(): void { show('settings-error', false); if (!settings.open) settings.showModal(); }
 function applyCalling(state: CallingState): void { calling = state; media.handleState(state); render(); }
 function render(): void {
   const state = media.state, call = calling.call, active = !!call && call.phase !== 'ringing';
@@ -35,12 +76,15 @@ function render(): void {
   let status = !calling.role ? 'Pair your Macs' : calling.network.state !== 'online' ? calling.network.message : !call ? calling.peerOnline ? 'Ready to call' : 'Waiting for your partner' :
     incoming ? 'Incoming call' : outgoing ? 'Calling your partner…' : reconnecting ? 'Reconnecting…' : state.connection === 'connected' ? 'Connected' : 'Connecting media…';
   if (state.capturing) status = 'Waiting for camera/microphone…';
+  document.body.dataset.paired = String(!!calling.role);
+  document.body.dataset.online = String(calling.network.state === 'online' && calling.peerOnline);
   element('status').textContent = status;
   element('mini-status').textContent = status;
   show('onboarding', !calling.role); show('paired', !!calling.role || !!calling.error);
   element('pairing-status').textContent = calling.role === 'host' ? 'This Mac hosts your private calls.' : calling.role === 'guest' ? 'Paired with your partner’s host.' : 'Secure pairing needs recovery.';
   show('copy-invitation', calling.role === 'host'); disabled('copy-invitation', setupBusy);
-  for (const id of ['host', 'import', 'retry', 'reset']) disabled(id, setupBusy);
+  for (const id of ['host', 'manual-host', 'import', 'retry', 'reset']) disabled(id, setupBusy);
+  element('host').textContent = setupBusy ? 'Setting up…' : 'Host on this Mac';
   show('call', !call && !state.capturing && !localActive); disabled('call', !ready || state.capturing);
   show('accept', !!incoming && !state.capturing); show('reject', !!incoming && !state.capturing);
   show('cancel', !!outgoing || state.capturing || (localActive && !call));
@@ -57,7 +101,7 @@ function render(): void {
     button.textContent = id === 'camera' ? label : state.cameraOn ? 'Cam' : 'Off';
   }
   const closeLabel = call || state.capturing || localActive ? 'End call' : 'Close ZoomTime'; element('close').title = closeLabel; element('close').setAttribute('aria-label', closeLabel);
-  show('local', localActive && state.cameraOn);
+  show('self-preview', localActive && state.cameraOn);
   const videoVisible = active && state.connection === 'connected' && !reconnecting && !!call.media[partner].video && remote.readyState >= 2;
   show('empty', !videoVisible);
   element('partner-title').textContent = state.capturing ? 'Waiting for permission…' : incoming ? 'Your partner is calling.' : outgoing ? 'Calling…' : reconnecting ? 'Reconnecting…' :
@@ -74,11 +118,12 @@ function render(): void {
   element('statistics').textContent = JSON.stringify({ signaling: calling.network.state, call: call?.phase ?? (calling.role ? 'ready' : 'unpaired'), ...state.stats,
     ...(connectedAt ? { connectedSeconds: Math.floor((Date.now() - connectedAt) / 1000) } : {}) }, null, 2);
 }
+element('host').addEventListener('click', () => { void setup(async () => { element('toast').textContent = 'Opening Tailscale and preparing your private endpoint…'; await window.zoomtime.setupHost(); element('toast').textContent = 'Host ready. Copy an invitation and share it privately with your partner.'; }); });
 element('host-form').addEventListener('submit', event => { event.preventDefault(); void setup(() => window.zoomtime.createHost(element<HTMLInputElement>('endpoint').value.trim())); });
 element('import').addEventListener('click', () => { void setup(() => window.zoomtime.importInvitation()); });
 element('copy-invitation').addEventListener('click', () => { void setup(async () => { await window.zoomtime.copyInvitation(); element('toast').textContent = 'Invitation copied. It contains a secret; share it only with your partner.'; }); });
 element('retry').addEventListener('click', () => { void setup(() => window.zoomtime.retryConnection()); });
-element('reset').addEventListener('click', () => { media.stop(); void setup(() => window.zoomtime.resetPairing()); });
+element('reset').addEventListener('click', () => { if (!confirm('Reset pairing and end any active call? You will need to share a fresh invitation.')) return; media.stop(); void setup(() => window.zoomtime.resetPairing()); });
 element('call').addEventListener('click', () => { action = 'call'; run(() => media.start('call')); });
 element('accept').addEventListener('click', () => { action = 'accept'; run(() => media.start('accept')); });
 element('audio-only').addEventListener('click', () => run(() => media.start(action, true)));
@@ -90,7 +135,33 @@ element('resume-audio').addEventListener('click', () => run(async () => { await 
 element('mini').addEventListener('click', () => run(() => window.zoomtime.setMode('mini').then(applyWindow)));
 element('restore').addEventListener('click', () => run(() => window.zoomtime.restore().then(applyWindow)));
 element('close').addEventListener('click', () => { if (calling.call || media.state.capturing || local.srcObject) media.hangup(); else run(() => window.zoomtime.close()); });
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && windowState?.mode === 'mini') { event.preventDefault(); run(() => window.zoomtime.restore().then(applyWindow)); } });
+element('minimize-window').addEventListener('click', () => run(() => window.zoomtime.minimize()));
+element('open-settings').addEventListener('click', openSettings);
+element('settings-close').addEventListener('click', () => settings.close());
+element('mirror').addEventListener('change', () => { void updatePreferences({ mirror: element<HTMLInputElement>('mirror').checked }); });
+element('mini-self-setting').addEventListener('change', () => { void updatePreferences({ miniSelf: element<HTMLInputElement>('mini-self-setting').checked }); });
+element('mini-self').addEventListener('click', () => { void updatePreferences({ miniSelf: !preferences.miniSelf }); });
+element('quality').addEventListener('change', () => { void updatePreferences({ quality: element<HTMLSelectElement>('quality').value as VideoQuality }); });
+element('preview-size').addEventListener('input', () => { selfPreview.style.width = `${element<HTMLInputElement>('preview-size').value}%`; });
+element('preview-size').addEventListener('change', () => { void updatePreferences({ previewSize: Number(element<HTMLInputElement>('preview-size').value) }); });
+selfPreview.addEventListener('pointerdown', () => { resizingPreview = true; });
+window.addEventListener('pointerup', () => { resizingPreview = false; });
+// Persist a user resize as a fraction so it scales with either window mode.
+new ResizeObserver(() => {
+  if (!resizingPreview || !selfPreview.offsetWidth || settingsBusy) return;
+  const percent = Math.round(selfPreview.offsetWidth / selfPreview.parentElement!.clientWidth * 100);
+  if (percent < 18 || percent > 45 || Math.abs(percent - preferences.previewSize) < 2) return;
+  clearTimeout(preferencesTimer);
+  preferencesTimer = setTimeout(() => { void updatePreferences({ previewSize: percent }); }, 300);
+}).observe(selfPreview);
+window.zoomtime.onSettings(openSettings);
+document.addEventListener('keydown', event => {
+  if (settings.open) return;
+  if (event.key === 'Escape') {
+    if (windowState?.mode === 'mini') { event.preventDefault(); run(() => window.zoomtime.restore().then(applyWindow)); }
+    else if (windowState?.fullScreen) { event.preventDefault(); run(() => window.zoomtime.setFullScreen(false).then(applyWindow)); }
+  }
+});
 remote.addEventListener('loadeddata', render);
 window.addEventListener('beforeunload', () => media.stop());
 window.zoomtime.onState(applyWindow);

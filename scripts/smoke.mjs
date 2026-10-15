@@ -52,7 +52,7 @@ async function smoke(minimum) {
     });
     const send = (method, params = {}, label = method) => new Promise((resolveReply, rejectReply) => {
       const requestId = ++id;
-      const timeout = /^window.zoomtime\.(createHost|retryConnection|resetPairing)/.test(label) ? 30000 : 5000;
+      const timeout = /^window.zoomtime\.(createHost|retryConnection|resetPairing|setFullScreen|setMode|minimize|restore)/.test(label) ? 30000 : 5000;
       const timer = setTimeout(() => { pending.delete(requestId); rejectReply(new Error(`${label} timed out`)); }, timeout);
       pending.set(requestId, { resolve: resolveReply, reject: rejectReply, timer });
       socket.send(JSON.stringify({ id: requestId, method, params }));
@@ -80,7 +80,7 @@ async function smoke(minimum) {
     assert.equal(await evaluate('typeof require'), 'undefined');
     assert.equal(await evaluate('typeof process'), 'undefined');
     assert.equal(await evaluate('isSecureContext'), true);
-    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode']);
+    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize'].sort());
     assert.equal(await evaluate("window.zoomtime.authorizeCapture('call').then(()=>false,()=>true)"), true, 'Unpaired apps cannot authorize capture');
     assert.equal(await evaluate("window.zoomtime.sendSignal({v:1,type:'request'}).then(()=>false,()=>true)"), true, 'Unpaired apps cannot signal a call');
     assert.deepEqual(await evaluate("window.zoomtime.getCallingState().then(s=>Object.keys(s).sort())"), ['call','endpoint','error','network','peerOnline','role']);
@@ -108,14 +108,37 @@ async function smoke(minimum) {
       writeFileSync(join(output, name), Buffer.from(result.data, 'base64'));
     };
     if (!minimum) await screenshot('normal.png');
+    assert.equal(await evaluate("window.zoomtime.setPreferences({mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true)"),true,'Invalid preferences must be rejected at IPC');
+    await evaluate("window.zoomtime.setPreferences({mirror:true,miniSelf:true,quality:'1080p',previewSize:35})");
+    await evaluate("window.__canvasForTest=document.createElement('canvas');window.__canvasForTest.width=320;window.__canvasForTest.height=180;let c=window.__canvasForTest.getContext('2d');c.fillStyle='#395986';c.fillRect(0,0,320,180);c.fillStyle='#fff';c.font='24px system-ui';c.fillText('Synthetic preview',20,90);window.__previewStream=window.__canvasForTest.captureStream(24);document.getElementById('local').srcObject=window.__previewStream;document.getElementById('self-preview').hidden=false;window.__previewForTest=document.getElementById('local');");
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'matrix(-1, 0, 0, 1, 0, 0)','Mirror only self-preview');
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('remote')).transform"),'none');
     const mini = await evaluate("window.zoomtime.setMode('mini')");
     assert.deepEqual({ width: mini.bounds.width, height: mini.bounds.height },
       minimum ? { width: 160, height: 90 } : { width: 320, height: 180 });
     assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession);
     await delay(1100);
     assert.equal(await evaluate('document.body.dataset.mode'), 'mini');
+    await evaluate("document.getElementById('self-preview').hidden=false");
+    assert.notEqual(await evaluate("getComputedStyle(document.getElementById('self-preview')).display"),'none','Optional mini preview is visible');
+    assert.equal(await evaluate("document.getElementById('local')===window.__previewForTest"),true,'Same muted preview element survives');
+    assert.equal(await evaluate("document.getElementById('local').muted"),true);
+    const previewBounds = await evaluate("(() => {const r=document.getElementById('self-preview').getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width};})()");
+    const drag = minimum ? 10 : 25;
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:previewBounds.right-4,y:previewBounds.bottom-4});
+    await send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',buttons:1,clickCount:1,x:previewBounds.right-4,y:previewBounds.bottom-4});
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,x:previewBounds.right-4+drag,y:previewBounds.bottom-4});
+    await delay(100);
+    await send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',buttons:0,clickCount:1,x:previewBounds.right-4+drag,y:previewBounds.bottom-4});
+    await delay(500);
+    assert.ok((await evaluate('window.zoomtime.getState()')).preferences.previewSize>35,'Dragging preview corner changes and saves its relative size in mini mode');
+    await screenshot(minimum ? 'mini-self-minimum.png' : 'mini-self.png');
+    await evaluate("window.zoomtime.setPreferences({mirror:false,miniSelf:false,quality:'720p',previewSize:24})");
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('self-preview')).display"),'none','Mini preview can be hidden');
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'none','Mirroring can be disabled');
+
     assert.ok(await counter() > firstFrame, 'Mini mode must retain the live renderer clock');
-    assert.equal(await evaluate("['restore','close'].every(id=>{const b=document.getElementById(id).getBoundingClientRect();return b.width>=32&&b.height>=32&&b.left>=0&&b.top>=0&&b.right<=innerWidth&&b.bottom<=innerHeight;})"), true, 'Mini controls must fit inside the real native window');
+    assert.equal(await evaluate("['mini-mute','mini-camera','mini-self','restore','close'].every(id=>{const b=document.getElementById(id).getBoundingClientRect();return b.width>=26&&b.height>=32&&b.left>=0&&b.top>=0&&b.right<=innerWidth&&b.bottom<=innerHeight;})"), true, 'Mini controls must fit inside the real native window');
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 10, y: 10 });
     await delay(200);
     assert.equal(await evaluate("getComputedStyle(document.querySelector('.mini-controls')).opacity"), '1', 'Hover must expose mini controls');
@@ -129,6 +152,8 @@ async function smoke(minimum) {
       if (name === 'Enter') await send('Input.dispatchKeyEvent', { type: 'char', text: '\r', ...params });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
     };
+    await key('Tab', 9);
+    assert.equal(await evaluate('document.activeElement.id'), 'mini-self', 'Tab must reach preview toggle');
     await key('Tab', 9);
     assert.equal(await evaluate('document.activeElement.id'), 'restore', 'Tab must reach restore');
     await delay(200);
@@ -156,6 +181,38 @@ async function smoke(minimum) {
       await evaluate('window.zoomtime.restore()');
       assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession);
     }
+    await evaluate("window.__previewStream.getTracks().forEach(t=>t.stop());document.getElementById('local').srcObject=null;document.getElementById('self-preview').hidden=true");
+    if (!minimum) {
+      await evaluate('window.zoomtime.setFullScreen(true)');
+      for(let i=0;i<100;i++){if((await evaluate('window.zoomtime.getState()')).fullScreen)break;await delay(100);}
+      assert.equal((await evaluate('window.zoomtime.getState()')).fullScreen,true,'Enter actual native full screen');
+      await delay(1000);
+      const fromFull = await evaluate("window.zoomtime.setMode('mini')");
+      assert.equal(fromFull.fullScreen,false); assert.equal(fromFull.mode,'mini'); assert.equal(fromFull.bounds.width,320,'Full screen exits before shrinking');
+      assert.deepEqual((await evaluate('window.zoomtime.restore()')).bounds,initial.bounds,'Normal bounds survive a real full-screen Space');
+      await evaluate('window.zoomtime.setFullScreen(true)');
+      for(let i=0;i<100;i++){if((await evaluate('window.zoomtime.getState()')).fullScreen)break;await delay(100);}
+      await delay(1000); await evaluate('window.zoomtime.minimize()');
+      assert.equal((await evaluate('window.zoomtime.getState()')).fullScreen,false,'Native full screen exits before Dock minimize');
+      for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).minimized)break;await delay(50);}
+      assert.equal((await evaluate('window.zoomtime.getState()')).minimized,true,'Actual native window is minimized to Dock');
+      await evaluate('window.zoomtime.restore()');
+      assert.equal(await evaluate('document.body.dataset.rendererSession'),rendererSession);
+      await evaluate("document.getElementById('open-settings').click()");
+      assert.equal(await evaluate("document.getElementById('settings').open"),true);
+      await evaluate("document.getElementById('mirror').click()");
+      for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.mirror)break;await delay(50);}
+      assert.equal((await evaluate('window.zoomtime.getState()')).preferences.mirror,true,'Settings checkbox updates persistent preference');
+      await evaluate("document.getElementById('preview-size').value='38';document.getElementById('preview-size').dispatchEvent(new Event('change'))");
+      for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.previewSize===38)break;await delay(50);}
+      assert.equal((await evaluate('window.zoomtime.getState()')).preferences.previewSize,38,'Accessible slider resizes the self-preview');
+
+      await screenshot('settings.png');
+      await evaluate("window.zoomtime.setMode('mini')"); assert.equal(await evaluate("document.getElementById('settings').open"),false,'Settings must not obscure a mini call');
+      await evaluate('window.zoomtime.restore()');
+      await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'dark'}]}); await screenshot('normal-dark.png');
+      await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'light'}]}); await screenshot('normal-light.png');
+    }
     await evaluate("window.zoomtime.createHost('wss://local-test.tail.ts.net:8443/zoomtime')");
     for(let i=0;i<50;i++){if(await evaluate("window.zoomtime.getCallingState().then(s=>s.network.state==='online')"))break;await delay(50);}
     assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role==='host'&&s.network.state==='online'&&!s.peerOnline)"),true,'Packaged host must start authenticated loopback signaling');
@@ -170,7 +227,7 @@ async function smoke(minimum) {
       packagedBundle: bundle, checks: ['bundled secure origin', 'no renderer Node', 'narrow bridge', 'production CSP',
         'blocked network/new window/navigation', 'invalid IPC rejected', 'unpaired capture and signaling denied', 'camera/microphone capture denied', 'renderer identity continuity', 'duplicate instance reuses renderer',
         minimum ? '160x90 mini' : '320x180 mini', 'controls fit native window', 'hover exposes controls', 'Tab reaches restore and close',
-        'Enter and Escape restore', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
+        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
       directCaptureDenial: captureDenial === 'NotAllowedError' ? 'rejected with NotAllowedError before explicit call authorization' : `inconclusive: ${captureDenial}`,
       physicalFullScreenGate: 'user reports own Mac passing; partner Mac pending', rendererSession };
     writeFileSync(join(output, minimum ? 'packaged-smoke-minimum.json' : 'packaged-smoke.json'), `${JSON.stringify(result, null, 2)}\n`);

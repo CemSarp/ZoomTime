@@ -7,9 +7,11 @@ There are two separate invitations:
 - **Tailscale invitation:** lets her Mac join your private network.
 - **ZoomTime invitation:** pairs the two apps. It contains a secret; send it privately, never through a public GitHub issue.
 
-Your Mac is the **host**. Her Mac is the **guest**. Only your Mac needs the Terminal setup below. Once paired, either person can start a call; both Macs, both apps and Tailscale must be running.
+Your Mac is the **host**. Her Mac is the **guest**. With ZoomTime0.3.0, neither Mac needs Terminal setup. Once paired, either person can start a call; both Macs, both apps and Tailscale must be running.
 
 ## 1. Install ZoomTime on both Macs
+
+**Version note:** 0.3.0 adds the automatic Host flow below and is currently a local build, not published to GitHub. Install the supplied 0.3.0 ZIP on both Macs to use it. The existing GitHub0.2.0 download below requires the legacy manual setup further down.
 
 Open the [0.2.0 download page](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0). Under **Assets**, choose:
 
@@ -39,6 +41,28 @@ These are unnotarized private builds, so a downloaded installation can have addi
 **Check together:** both Macs should appear on the [Machines page](https://login.tailscale.com/admin/machines), and both Tailscale apps should say Connected. If the console requires approval for her user/device, approve the intended one. Joining is governed by your existing network policy; other devices in the network may also be reachable under that policy.
 
 If she cannot choose your network, use Tailscale's sign-in/account/network selector to add or select the invited network. Do not fix this by giving her your password. Do not create a device-share invitation for this walkthrough: joining the same network matches the agreed two-Mac setup.
+
+## 3. On your Mac: click Host
+
+1. Open ZoomTime0.3.0 and click **Host on this Mac**.
+2. ZoomTime opens the installed Tailscale app. Finish any first-time sign-in or macOS VPN approval there, then click Host again if asked. You must already have Tailscale installed in Applications.
+3. The app detects your actual private hostname and checks port8443. If unused, it configures private HTTPS forwarding to ZoomTime. No terminal commands or manually copied address are needed.
+4. If HTTPS certificates are not enabled, open the [Tailscale DNS page](https://login.tailscale.com/admin/dns), enable MagicDNS/HTTPS certificates, then retry Host. ZoomTime cannot grant account-owner approval for you. Tailscale publishes certificate hostnames to certificate-transparency logs. Use a machine name you are comfortable having in those logs. [Tailscale HTTPS guidance](https://tailscale.com/docs/how-to/set-up-https-certificates)
+5. Complete any local ZoomTime Keychain approval. Click **Copy invitation** and send it privately to your partner yourself. The app never sends it for you.
+
+A different service, public Funnel, foreground service or old-hostname configuration on8443 is a conflict. The app leaves it unchanged. Do not use Serve reset or overwrite an unrelated service. If this host was renamed, review only its owned ZoomTime entry before resetting/re-pairing.
+
+## 4. On her Mac: join
+
+1. Copy the entire ZoomTime invitation you sent to her clipboard.
+2. Open ZoomTime0.3.0 and click **Paste partner’s invitation**.
+3. Finish any Tailscale sign-in/VPN or Keychain approval locally, then retry Join if needed.
+4. Both apps should say **Ready to call**. Do not set up both Macs as hosts.
+
+Pairing is normally done once. Future launches reuse encrypted pairing; do not reset it unless troubleshooting requires a fresh invitation. If Tailscale was explicitly disconnected, reconnect it in its app before retrying an existing pairing. No camera starts during setup.
+
+<details>
+<summary>Legacy manual setup for the published 0.2.0 app</summary>
 
 ## 3. On your Mac only: check Terminal access
 
@@ -107,6 +131,9 @@ Keep `:8443` and `/zoomtime`. Copy the complete result. You only need to do this
 
 Do not set up both Macs as hosts. Pairing is normally done once. When both apps connect, they should say **Ready to call**. If pairing was already completed successfully, keep it; no reset is needed for this guide.
 
+
+</details>
+
 ## 6. Make the first call
 
 1. Put on headphones and keep both Tailscale apps connected.
@@ -114,16 +141,25 @@ Do not set up both Macs as hosts. Pairing is normally done once. When both apps 
 3. The other clicks **Accept call**.
 4. Allow the trusted ZoomTime build to use camera/microphone if macOS asks.
 5. Confirm you can both hear and see each other.
-6. Click **Open mini mode**, then put your movie into full screen. Hover or Tab reveals the controls. Escape restores normal size while ZoomTime is focused.
+6. Click **Mini window** (0.2.0: **Open mini mode**), then put your movie into full screen. Hover or Tab reveals the controls. Escape restores normal size while ZoomTime is focused.
 7. Click **End call** when finished. Closing/quitting also ends capture. Your host Mac/app must stay awake/open during calls.
 
 Each person plays the movie separately. Native Dock minimization hides the window; use Mini to keep the small video visible. There is no app-imposed meeting timer.
+
+## Make the view yours (0.3.0)
+
+Open **Settings…** or press **⌘,**. Choose 720p for normal use, 1080p for more detail, or360p for lower data/power use. Actual quality may be lower because of the camera or network. Settings affect the video this Mac sends; each person chooses their own.
+
+**Mirror my preview** flips only your own view. **Show me in mini mode**, or **You** in mini controls, shows your muted self-preview. Drag its bottom-right corner or use the size slider to resize it in either mode. All five controls remain accessible by hover/Tab at160×90. The preview hides when your camera is off.
+
+Escape exits app full screen or restores mini; **⌘M / −** minimizes to Dock after leaving full screen. Dock minimization hides the video window while the call continues. Use **⌘⇧M / Mini window** to keep it floating above your movie.
 
 ## If something does not work
 
 | What you see | Next step |
 | --- | --- |
 | Waiting for partner / host unavailable | Both apps open, both Macs connected to the same invited Tailscale network; host Serve running. Try `tailscale serve status`. |
+| Worked before a Tailscale device rename/re-registration | Compare the saved endpoint and Serve hostname with the device’s current DNS name. A stale name can cause DNS/TLS failures before calling. Repair only the owned ZoomTime Serve entry, then host resets/recreates pairing with the current endpoint and guest imports the new invitation. Do not reset unrelated Serve services. |
 | Wrong endpoint | Use the hostname from your own Serve output, `wss://`, port8443 and `/zoomtime`; do not copy the example hostname. |
 | Pairing rejected | Check that she imported your ZoomTime invitation, rather than the Tailscale invitation; close competing app instances. |
 | Keychain blocked | Unlock/approve locally and explicitly retry. Do not share your password. |

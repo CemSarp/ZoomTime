@@ -13,7 +13,7 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 | macOS 14+, separate arm64/x64 packages | Both Macs meet this floor; distribution must fit the actual processor. |
 | One BrowserWindow, renderer, peer connection, and persistent video elements | Mini mode must not reload/reacquire/renegotiate or depend on a large hidden window. |
 | Normal 900×600; mini 320×180; minimum mini 160×90 logical pixels | The view must be substantially smaller than FaceTime and freely resizable. Fit video without stretching; do not force an aspect ratio. The normal minimum is 640×420 to keep its instruction/control area usable. |
-| Partner-only mini view; muted self-preview in normal mode | The smallest view should devote space to the partner. |
+| Optional muted self-preview in mini mode; self-preview in normal mode | User revision2026-10-15: let each person choose to see themselves; default mini remains partner-only. Mirroring changes only the local element. A relative preview size follows both modes without duplicating media. |
 | Documented floating/full-screen workspace APIs | Achieve the central window requirement without extreme window levels or repeated focus stealing. |
 | Separate movie playback | No movie streaming, screen sharing, or synchronization subsystem is needed. |
 | Tailscale on both Macs; my Mac hosts signaling while open | No public server, third computer, router forwarding, or paid host. Both apps must run; no offline ringing/push. |
@@ -22,7 +22,7 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 | Separate random 32-byte host/guest credentials | Tailnet membership alone does not authorize a call. Authenticated transport determines role. |
 | Main-process safeStorage | Keychain-backed encrypted credential persistence; fail securely when unavailable, never plaintext fallback. |
 | Explicit Call/Accept before camera/mic access | Opening the app must not start capture. Camera off stops/releases its track; mute disables transmitted audio. |
-| Prefer 640×360 at 24 fps, normal speech-processing constraints | Appropriate for long calls in a tiny window; allow ordinary codec negotiation. |
+| Prefer 720p/30 fps, with selectable 360p/24 or1080p/30; normal speech processing | User revision2026-10-15 requests improved detail and quality controls. Ideal constraints allow hardware fallback; applyConstraints updates a live track without replacing the peer. No fixed bitrate/codec is forced; WebRTC adapts to congestion. |
 | System-default devices initially | Avoid a device-management subsystem; support explicit reacquisition after disappearance. |
 | Settings and pairing only; no database/history/analytics/recording | Retain only what this private app needs. |
 | Unnotarized Mac packages; GitHub prerelease downloads; manual updates | No paid Apple membership or update server; expect per-app trust/Keychain/permission prompts. The user requested GitHub downloads on2026-10-14; the existing public repository is reused. |
@@ -74,7 +74,7 @@ If the real two-network call cannot connect, stop this version and document the 
 
 One persistent renderer across normal/mini transitions; no renderer reload or second hidden media-owning window. Free resize, aspect-fit, remembered separate bounds, recovery onto available displays. Native Dock minimize can hide the window; the Mini action keeps the partner visible.
 
-Mini controls remain available on hover and keyboard focus and fit at 160×90: mute, camera, restore, hangup. Normal mode includes partner, muted self-preview, call controls, and status. Camera-off/stale/reconnecting must not masquerade as live video. Close/quit ends capture. Do not repeatedly steal movie keyboard focus.
+Mini controls remain available on hover and keyboard focus and fit at 160×90: mute, camera, restore, hangup. Normal mode includes partner, muted self-preview, call controls, and status. Mini optionally shows that same self-preview with the same relative size; resizing and mirroring never touch transmitted tracks. Native full-screen exit is asynchronous: mode changes and Dock minimize wait for leave-full-screen, and full-screen/maximized bounds never replace saved normal geometry. Camera-off/stale/reconnecting must not masquerade as live video. Close/quit ends capture. Do not repeatedly steal movie keyboard focus.
 
 The historical 0.1.0 window probe used explicitly synthetic animation. Version 0.2.0 replaces it with persistent partner/self video and real calling controls. The renderer session ID and uptime remain diagnostic only; they do not claim a media connection.
 
@@ -127,6 +127,8 @@ Negotiation messages are serialized and bounded early ICE is queued until the ma
 - [Apple window capture behavior](https://developer.apple.com/videos/play/wwdc2022/10155/)
 - [FaceTime URL integration](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/FacetimeLinks/FacetimeLinks.html)
 - [WebRTC peer connections](https://webrtc.org/getting-started/peer-connections)
+- [Apple settings guidelines](https://developer.apple.com/design/human-interface-guidelines/settings)
+- [Apple windows guidelines](https://developer.apple.com/design/human-interface-guidelines/windows)
 - [Electron windows](https://www.electronjs.org/docs/latest/api/browser-window/)
 - [Electron security](https://www.electronjs.org/docs/latest/tutorial/security)
 - [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage)
@@ -134,3 +136,9 @@ Negotiation messages are serialized and bounded early ICE is queued until the ma
 - [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve)
 - [Tailscale connection types](https://tailscale.com/docs/reference/connection-types)
 - [Apple app approval](https://support.apple.com/en-gb/102445)
+
+## 2026-10-15: user-requested setup and UI revisions
+
+Host setup can now run fixed Tailscale commands after the user presses Host. Main opens only the known installed Tailscale application, uses execFile with fixed argument arrays/timeouts/output limits (no shell), derives/validates the actual hostname from status, checks HTTPS eligibility and Serve state, rechecks before changing its free8443 port, then verifies the owned result. Existing owned service is reused. Conflicting/old-hostname/Funnel/foreground services are refused. No automatic live tailnet changes occur during development tests or startup, no account grants/reset/Funnel commands exist, and no arbitrary command/URL bridge is exposed. Join opens/connects Tailscale but never runs Serve. First-time user sign-in, VPN approval and HTTPS/account-owner approval remain interactive. The old manual endpoint flow is kept under Advanced for already configured hosts.
+
+System light/dark colors, familiar controls, focused call actions and a grouped modal Settings view apply Apple’s hierarchy and accessibility guidance within the existing single renderer. The menu offers Settings with Command-comma. No UI framework or dependency was added. Camera settings join geometry in the private atomic preferences file; old geometry-only files migrate with safe defaults. Pairing storage remains encrypted and separate.

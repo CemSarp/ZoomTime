@@ -2,9 +2,20 @@
 
 A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
 
-**Version 0.2.0 is a calling release candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+**Version 0.3.0 is the current local calling candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+
+## What changed in 0.3.0
+
+- Mirror your self-preview without flipping what your partner receives.
+- Show/hide your self-preview in mini mode with **You**. Resize it with its corner or the size slider in Settings; the same relative size applies in both modes.
+- Choose **360p**, **720p** (default) or **1080p** in **Settings… / ⌘,**. Changes apply during a call without replacing its peer connection. These are preferred capture sizes; hardware and congestion can lower actual capture/sent quality. Connection details show actual capture dimensions/fps.
+- **Host on this Mac** opens the installed Tailscale app, connects an existing signed-in session when possible, detects the private hostname, and configures ZoomTime’s free private Serve port. No terminal address copying. Initial Tailscale sign-in/VPN approval, tailnet invitations and HTTPS approval still require the account owner. Conflicts/old-hostname services are left unchanged with instructions.
+- Full-screen → mini/Dock transitions wait for macOS to finish leaving full screen. Escape exits full screen; ⌘M minimizes to Dock; ⌘⇧M floats the same call.
+- System light/dark appearance, compact grouped settings, accessible call controls, and a calmer video-centered layout.
 
 ## Install
+
+The new 0.3.0 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have **not been published**. The existing GitHub download below remains 0.2.0 and does not include these changes.
 
 **[Download ZoomTime 0.2.0 for Mac](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0)** — open Assets and choose Apple Silicon (arm64) or Intel (x64). Download the app ZIP, not Source code.
 
@@ -14,7 +25,7 @@ A private two-person Mac calling app with a small, resizable floating window. Ea
 macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
 1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
-2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/SHA256SUMS). Local-build hashes also remain in `out/distribution/0.2.0/SHA256SUMS`.
+2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/SHA256SUMS). For the new local builds, use `out/distribution/0.3.0/SHA256SUMS` instead; never compare different versions’ hashes.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
 
@@ -22,26 +33,28 @@ The previous 0.1.0 probe archives remain available; keep them while testing repl
 
 ## Pair and call
 
-Complete [one-time private network setup](docs/NETWORK_SETUP.md) first. Both Macs need Tailscale and both apps must be open. No network settings are changed by ZoomTime.
+Complete [one-time private network setup](docs/NETWORK_SETUP.md) first. Both Macs need Tailscale and both apps must be open. Network setup runs only after an explicit Host or Join action. Hosting inspects Serve before configuring its private port; other services, grants and Funnel are never changed.
 
-On your Mac, enter the approved `wss://your-mac.your-tailnet.ts.net:8443/zoomtime` endpoint and choose **Set up this Mac as host**. Choose **Copy invitation** and share it only with your partner; the invitation contains a secret. On her Mac, copy it to the clipboard and choose **Paste partner's invitation**. Credentials stay in main-process Keychain-backed encrypted storage; the renderer never receives them. The invitation is not an encrypted document.
+On your Mac, choose **Host on this Mac**. The app detects the endpoint and configures its private service. The advanced **Manual host setup** remains available when Serve is already configured. Choose **Copy invitation** and share it only with your partner; the invitation contains a secret. On her Mac, copy it to the clipboard and choose **Paste partner's invitation**. Credentials stay in main-process Keychain-backed encrypted storage; the renderer never receives them. The invitation is not an encrypted document.
 
 When both participants are online, choose **Call your partner**, then **Accept call** on the other Mac. Camera/microphone capture starts only after these actions. If a camera fails, **Try microphone only** is an explicit fallback; microphone denial never silently starts a normal call. Use headphones for the first movie tests.
 
-Choose **Open mini mode** to keep the partner visible. This shrinks the same window; Dock minimization hides it. It can resize to 160×90 logical pixels, with aspect-fit video. Hover or Tab exposes microphone, camera, restore and end controls. The self-preview stays muted and is hidden in mini mode. Mode changes do not create a new renderer, peer connection or capture session.
+Choose **Mini window** to keep the partner visible. This shrinks the same window; Dock minimization hides it. It can resize to 160×90 logical pixels, with aspect-fit video. Hover or Tab exposes microphone, camera, restore and end controls. The self-preview stays muted. Enable it in mini mode with **You** or Settings. Mode changes do not create a new renderer, peer connection or capture session.
 
 | Action | Control |
 | --- | --- |
-| Normal / mini | Open mini mode or ⌘⇧M while ZoomTime is active |
+| Normal / mini | Mini window or ⌘⇧M while ZoomTime is active |
 | Restore | Arrow; Escape while focused; Window menu; ⌘⇧R |
 | Move / resize mini | Drag background / window edge |
 | Mute | Disables transmitted microphone audio; hardware capture remains active |
 | Camera off | Stops/releases the camera track; turning it on reacquires a track |
 | End | End call / mini × during a call; devices are released |
 | Close / quit | Native close, ⌘W or ⌘Q ends capture and exits |
+| Settings | Settings… or ⌘,; mirror, quality, mini self-preview, preview size |
+| Dock minimize | − in the title bar or ⌘M; leaves full screen first |
 | Device recovery | Recover devices acquires the current macOS defaults, preserving mute |
 
-**Reset pairing and end call** revokes the old guest after a successful encrypted save. Recreate the host and send a new invitation. If Keychain cannot save the reset, the host and capture stop and the app explicitly reports that revocation was not saved. Unlock Keychain and retry Reset before relying on revocation. Retry connection deliberately ends a current call; brief signaling outages otherwise recover automatically while retaining working media.
+**Reset pairing…** revokes the old guest after a successful encrypted save. Recreate the host and send a new invitation. If Keychain cannot save the reset, the host and capture stop and the app explicitly reports that revocation was not saved. Unlock Keychain and retry Reset before relying on revocation. Retry connection deliberately ends a current call; brief signaling outages otherwise recover automatically while retaining working media.
 
 ## Troubleshooting
 

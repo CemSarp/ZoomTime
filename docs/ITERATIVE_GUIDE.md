@@ -16,7 +16,7 @@ Loopback server and guest WSS via private Serve; secure pairing storage/import/e
 
 ## 3 — Real calling probe
 
-`iceServers: []`, explicit camera/mic permission flow, packaged usage descriptions, 640×360/24 fps defaults, persistent partner video, muted self-preview, host-offerer, collision handling, queued early ICE, call/generation guards. Inspect actual selected route across two real networks. Run ≥60 minutes including mini/full screen. No STUN/TURN, SDP rewriting, or insecure flags to rescue failure.
+`iceServers: []`, explicit camera/mic permission flow, packaged usage descriptions, 720p/30 fps defaults with360p/24 and1080p/30 preferences (user revision2026-10-15), persistent partner video, muted self-preview, host-offerer, collision handling, queued early ICE, call/generation guards. Inspect actual selected route across two real networks. Run ≥60 minutes including mini/full screen. No STUN/TURN, SDP rewriting, or insecure flags to rescue failure.
 
 **Release gate:** if media cannot connect on the actual networks, record evidence and stop release work. The 2026-10-14 ruling permits local implementation/testing while the remote evidence is unavailable.
 
@@ -43,3 +43,7 @@ Packaged real three-hour two-network call. Test both audio/video directions, nat
 ## Completion and maintenance
 
 Done means actual two-Mac evidence, not compilation: authenticated usable calls, full-screen small view, three-hour session, controls/recovery/cleanup, no unwanted services/payments, reproducible builds and handoff. Update Electron periodically and rerun connection/window/permissions/package tests. Retain the working build while testing replacements. Never guarantee connectivity or unlimited availability merely because there is no app duration limit.
+
+## 2026-10-15 scoped iteration
+
+The user requested local-preview mirroring, optional resizable mini self-preview, quality controls, explicit in-app Tailscale Host setup, a full-screen/minimize fix and macOS visual refinement. These revise the partner-only mini and fixed360p defaults without changing the no-STUN/TURN architecture. Verify preferences migration/validation, Serve conflict preservation, actual native full-screen exit, preview/mirror/UI controls and live resolution changes. Actual two-device camera quality, CPU/bandwidth and long-call evidence remain pending; do not publish automatically.

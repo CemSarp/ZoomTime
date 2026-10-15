@@ -1,3 +1,4 @@
+import type { Preferences } from './preferences.ts';
 import type { Bounds, WindowMode } from './window-state.ts';
 import type { CallingEvent, CallingState, CaptureAction } from './calling-service.ts';
 import type { ClientMessage } from './protocol.ts';
@@ -5,12 +6,20 @@ export interface WindowState {
   mode: WindowMode;
   bounds: Bounds;
   preferencesError: boolean;
+  preferences: Preferences;
+  fullScreen: boolean;
+  minimized: boolean;
 }
 export interface ZoomTimeBridge {
   getState(): Promise<WindowState>;
   setMode(mode: WindowMode): Promise<WindowState>;
+  setPreferences(preferences: Preferences): Promise<WindowState>;
+  setupHost(): Promise<void>;
+  setFullScreen(enabled: boolean): Promise<WindowState>;
+  minimize(): Promise<void>;
   restore(): Promise<WindowState>;
   close(): Promise<void>;
+  onSettings(callback: () => void): () => void;
   onState(callback: (state: WindowState) => void): () => void;
   getCallingState(): Promise<CallingState>;
   createHost(endpoint: string): Promise<void>;

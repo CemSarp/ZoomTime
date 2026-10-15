@@ -1,3 +1,4 @@
+import { videoConstraints, type VideoQuality } from './preferences.ts';
 import type { CallingState, CaptureAction } from './calling-service.ts';
 import type { ClientMessage, ServerMessage } from './protocol.ts';
 export interface MediaState { capturing: boolean; muted: boolean; cameraOn: boolean; error: string | null; audioOnlyOffered: boolean; connection: string; stale: boolean; stats: Record<string, string | number> }
@@ -9,6 +10,8 @@ export class MediaCall {
   private latest: CallingState | null = null;
   private stream: MediaStream | null = null;
   private wantedCamera = false;
+  private quality: VideoQuality = '720p';
+  private qualityBusy = false;
   private peer: RTCPeerConnection | null = null;
   private epoch = 0;
   private offered = 0;
@@ -65,7 +68,21 @@ export class MediaCall {
   }
   private constraints(camera: boolean): MediaStreamConstraints {
     return { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: camera ? { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24, max: 24 } } : false };
+      video: camera ? videoConstraints(this.quality) : false };
+  }
+  async setQuality(quality: VideoQuality): Promise<void> {
+    if (quality !== '360p' && quality !== '720p' && quality !== '1080p') throw new Error('Unsupported camera quality.');
+    if (quality === this.quality) return;
+    if (this.qualityBusy || this.value.capturing) throw new Error('Wait for the camera operation to finish, then retry quality.');
+    const track = this.stream?.getVideoTracks().find(t => t.readyState === 'live'), epoch = this.epoch;
+    if (!track) { this.quality = quality; return; }
+    this.qualityBusy = true;
+    try {
+      await track.applyConstraints(videoConstraints(quality));
+      if (this.valid(epoch)) { this.quality = quality; this.changed(); }
+    } catch {
+      if (this.valid(epoch)) throw new Error('Camera quality could not change. Your previous setting is kept. Try a lower resolution.');
+    } finally { this.qualityBusy = false; }
   }
   async start(action: 'call' | 'accept', audioOnly = false): Promise<void> {
     if (this.value.capturing || this.stream) return;
@@ -292,7 +309,8 @@ export class MediaCall {
       const local = selected ? reports.get(String(selected.localCandidateId)) : null, remote = selected ? reports.get(String(selected.remoteCandidateId)) : null;
       const address = local?.address;
       const tailscale = typeof address === 'string' && (/^100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(address) || address.startsWith('fd7a:115c:a1e0:'));
-      this.value.stats = { connection: peer.connectionState, ice: peer.iceConnectionState, route: tailscale ? 'Tailscale candidate observed' : address ? 'Other direct candidate observed' : 'Candidate address unavailable',
+      const capture = this.stream?.getVideoTracks()[0]?.getSettings();
+      this.value.stats = { captureWidth: capture?.width ?? 0, captureHeight: capture?.height ?? 0, captureFps: Math.round(capture?.frameRate ?? 0), connection: peer.connectionState, ice: peer.iceConnectionState, route: tailscale ? 'Tailscale candidate observed' : address ? 'Other direct candidate observed' : 'Candidate address unavailable',
         localCandidate: local?.candidateType ?? 'unknown', remoteCandidate: remote?.candidateType ?? 'unknown', transport: local?.protocol ?? 'unknown',
         rttMs: Math.round(Number(selected?.currentRoundTripTime ?? 0) * 1000), localCandidates, remoteCandidates, checksSent, repliesReceived, receivedVideoFrames: frames, receivedAudioPackets: audioPackets, packetsLost: lost,
         sendKbps: this.lastStats.at ? Math.max(0, Math.round((sent - this.lastStats.sent) * 8 / seconds / 1000)) : 0,

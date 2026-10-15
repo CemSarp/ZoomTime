@@ -7,44 +7,60 @@
   <title>ZoomTime</title>
 </head>
 <body>
-  <header class="titlebar"><strong>ZoomTime</strong><span>Just you two.</span></header>
+  <header class="titlebar"><strong>ZoomTime</strong><span>Just you two.</span><span class="spacer"></span><button id="minimize-window" class="title-action" type="button" title="Minimize to Dock (⌘M)" aria-label="Minimize to Dock">−</button></header>
   <main>
-    <div class="heading"><div><p class="eyebrow">A LITTLE CLOSER</p><h1>Your evening, together.</h1></div><span id="status" role="status">Pair your Macs</span></div>
+    <div class="heading"><div><p class="eyebrow">YOUR PRIVATE SPACE</p><h1>A little closer.</h1></div><span id="status" class="connection-status" role="status">Pair your Macs</span></div>
     <section class="stage" aria-label="Partner video">
       <video id="remote" autoplay playsinline disablepictureinpicture></video>
-      <div id="empty"><span class="avatar" aria-hidden="true">♡</span><h2 id="partner-title">A window for the two of you.</h2><p id="partner-detail">Pair your Macs, then start a private call.</p></div>
-      <video id="local" class="self-preview" autoplay muted playsinline disablepictureinpicture aria-label="Your muted self-preview" hidden></video>
+      <div id="empty"><span class="avatar" aria-hidden="true">♡</span><h2 id="partner-title">Make room for each other.</h2><p id="partner-detail">One private call. An evening together.</p></div>
+      <div id="self-preview" class="self-preview" hidden><video id="local" autoplay muted playsinline disablepictureinpicture aria-label="Your muted self-preview"></video><span aria-hidden="true">You</span></div>
       <span id="mini-status" role="status">Ready when you are</span>
       <div class="mini-controls" role="group" aria-label="Call and window controls">
         <button id="mini-mute" type="button" title="Mute microphone" aria-label="Mute microphone" disabled>Mic</button>
         <button id="mini-camera" type="button" title="Turn camera off" aria-label="Turn camera off" disabled>Cam</button>
+        <button id="mini-self" type="button" title="Show your camera preview" aria-label="Show your camera preview" aria-pressed="false">You</button>
         <button id="restore" type="button" title="Restore normal window (Escape)" aria-label="Restore normal window">↗</button>
-        <button id="close" type="button" title="Close ZoomTime" aria-label="Close ZoomTime">×</button>
+        <button id="close" class="danger" type="button" title="Close ZoomTime" aria-label="Close ZoomTime">×</button>
       </div>
     </section>
     <div class="controls" role="group" aria-label="Call controls">
       <button id="call" class="primary" type="button" disabled>Call your partner</button>
       <button id="accept" class="primary" type="button" hidden>Accept call</button>
-      <button id="reject" type="button" hidden>Reject</button>
-      <button id="cancel" type="button" hidden>Cancel</button>
-      <button id="mute" type="button" hidden>Mute microphone</button>
-      <button id="camera" type="button" hidden>Turn camera off</button>
+      <button id="reject" type="button" hidden>Decline</button><button id="cancel" type="button" hidden>Cancel</button>
+      <button id="mute" type="button" hidden>Mute microphone</button><button id="camera" type="button" hidden>Turn camera off</button>
       <button id="hangup" class="danger" type="button" hidden>End call</button>
-      <span class="spacer"></span><button id="mini" type="button">Open mini mode ↘</button>
+      <span class="spacer"></span><button id="mini" type="button" title="Float above other windows (⌘⇧M)">Mini window ↘</button>
     </div>
     <p id="error" class="notice" role="alert" hidden></p>
     <div class="recovery"><button id="audio-only" type="button" hidden>Try microphone only</button><button id="devices" type="button" hidden>Recover devices</button><button id="resume-audio" type="button" hidden>Resume audio</button></div>
     <section id="onboarding" class="pairing">
-      <h2>One private connection.</h2><p>Install Tailscale on both Macs. Your Mac hosts; your partner pastes its invitation.</p>
-      <form id="host-form"><label for="endpoint">Your private Tailscale endpoint</label><div class="row"><input id="endpoint" type="url" maxlength="512" autocomplete="off" spellcheck="false" placeholder="wss://your-mac.your-tailnet.ts.net:8443/zoomtime" required /><button id="host" type="submit">Set up this Mac as host</button></div></form>
-      <button id="import" type="button">Paste partner's invitation</button>
-      <p class="small">The host needs private Tailscale Serve on port 8443 → localhost:47831. See README for setup. ZoomTime never configures your network automatically.</p>
+      <div class="pairing-intro"><h2>Connect your two Macs</h2><p>Both need Tailscale, signed in to the same private network with your own accounts.</p></div>
+      <div class="setup-options">
+        <div class="setup-option"><span class="step">1</span><div><h3>On the host’s Mac</h3><p>We’ll open Tailscale and set up the private connection.</p><button id="host" class="primary" type="button">Host on this Mac</button></div></div>
+        <div class="setup-option"><span class="step">2</span><div><h3>On your partner’s Mac</h3><p>Copy the host’s invitation, then join here.</p><button id="import" type="button">Paste partner’s invitation</button></div></div>
+      </div>
+      <details class="advanced"><summary>Manual host setup</summary><form id="host-form"><label for="endpoint">Private Tailscale endpoint</label><div class="row"><input id="endpoint" type="url" maxlength="512" autocomplete="off" spellcheck="false" placeholder="wss://your-mac.your-tailnet.ts.net:8443/zoomtime" required /><button id="manual-host" type="submit">Use endpoint</button></div><p class="small">Use only if private Serve is already configured on port 8443 → localhost:47831.</p></form></details>
     </section>
-    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><span class="spacer"></span><button id="copy-invitation" type="button" hidden>Copy invitation</button><button id="retry" type="button">Retry connection</button><button id="reset" type="button">Reset pairing and end call</button></div></section>
+    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><span class="spacer"></span><button id="copy-invitation" type="button" hidden>Copy invitation</button><button id="retry" type="button">Retry connection</button><button id="reset" class="subtle" type="button">Reset pairing…</button></div></section>
     <p id="toast" role="status" class="small"></p>
-    <details class="diagnostics"><summary>Connection diagnostics</summary><p>Session <span id="session">—</span> · App uptime <span id="elapsed">00:00</span> · Window <span id="size">900 × 600</span></p><pre id="statistics">No active media connection.</pre></details>
-    <p id="preferences" class="notice" role="status" hidden>Window preferences could not be saved. Restart to retry.</p>
-    <footer>Private build · no recording · each Mac plays its own movie · ⌘⇧M toggles mini mode</footer>
+    <details class="diagnostics"><summary>Connection details</summary><p>Session <span id="session">—</span> · Uptime <span id="elapsed">00:00</span> · Window <span id="size">900 × 600</span></p><pre id="statistics">No active media connection.</pre></details>
+    <p id="preferences" class="notice" role="status" hidden>Preferences could not be saved. Check available disk space, then retry.</p>
+    <footer><span>Private by design <span aria-hidden="true">·</span> No recording</span><span class="spacer"></span><button id="open-settings" class="subtle" type="button" title="Settings (⌘,)">Settings…</button></footer>
   </main>
+  <dialog id="settings" aria-labelledby="settings-title">
+    <div class="settings-header"><div><p class="eyebrow">MAKE IT YOURS</p><h2 id="settings-title">Call settings</h2></div><button id="settings-close" type="button" aria-label="Close settings">Done</button></div>
+    <p class="settings-description">Changes apply to this Mac and are remembered for your next call.</p>
+    <div class="settings-group">
+      <label class="setting-row" for="quality"><span><strong>Camera quality</strong><small>The video you send to your partner.</small></span><select id="quality"><option value="360p">360p · Data saver</option><option value="720p">720p · HD</option><option value="1080p">1080p · Full HD</option></select></label>
+      <p class="setting-help">720p balances detail and bandwidth. 1080p uses more power and data. Actual quality depends on your camera and connection.</p>
+      <label class="setting-row" for="mirror"><span><strong>Mirror my preview</strong><small>Flip your own view horizontally. Your partner’s view stays unchanged.</small></span><input id="mirror" type="checkbox" role="switch" /></label>
+    </div>
+    <div class="settings-group">
+      <label class="setting-row" for="mini-self-setting"><span><strong>Show me in mini mode</strong><small>Keep a small self-preview alongside your partner.</small></span><input id="mini-self-setting" type="checkbox" role="switch" /></label>
+      <label class="setting-row" for="preview-size"><span><strong>Self-preview size</strong><small>Applies in both modes. You can also drag its bottom-right corner.</small></span><input id="preview-size" type="range" min="18" max="45" step="1" aria-label="Self-preview size" /></label>
+    </div>
+    <p id="settings-error" class="notice" role="alert" hidden></p>
+    <p class="setting-help">Each Mac plays its own movie. ⌘⇧M toggles the floating mini window. Escape restores it or exits full screen.</p>
+  </dialog>
 </body>
 </html>

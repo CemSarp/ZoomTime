@@ -1,4 +1,26 @@
-# Verification evidence — 0.2.0 calling candidate
+# Verification evidence
+
+
+## 0.3.0 local candidate — 2026-10-15
+
+Same local hardware/toolchain as below. New source is local; no GitHub publication or live tailnet mutation during these tests. No dependency additions/upgrades. Existing0.2.0 release remains unchanged.
+
+| Command/check | Fresh result |
+| --- | --- |
+| npm test | **52 pass**, no failures/skips; includes preferences migration, normalization, Serve conflict/Funnel/foreground protection and concurrent config change, native transition ordering. |
+| npm run typecheck / npm run lint / git diff --check | Pass. |
+| npm run test:media | Pass,133.067s total using real WebRTC with generated media. Live720p/1080p/360p applyConstraints updates keep the peer/tracks; camera constraint rejection preserves the prior choice for reacquisition. Existing media/lifecycle/cleanup checks also pass. Lost-request30.031s; stale recovery30.009s; ring60.193s. No hardware capture. |
+| npm run make:arm64 / npm run make:x64 | Pass. New0.3.0 ZIPs; previous-version ZIPs retained. |
+| npm run test:packaged | **24 groups pass at both mini sizes** on the latest arm64 bundle. Assertions include actual native full-screen→mini, full-screen→Dock with native minimized state, retained normal geometry; corner-drag saves preview size, local-only mirror, show/hide preview, checkbox/slider Settings, modal closure when shrinking, light/dark rendering, plus existing security/Keychain/auth/cleanup checks. |
+| Both artifact checks | codesign deep/strict, executable architecture, stable bundle ID/version/minimum OS/usage descriptions, security fuses, minimal six-file ASAR payload and unzip integrity pass. x64 was not executed. |
+| npm audit --omit=dev | Zero production npm advisories. |
+| Full npm audit | Eight existing development advisories: six high, two moderate. No runtime dependency changes. Exposure/limits are described below. |
+
+Evidence copies: out/verification/media-integration-0.3.0.json, packaged-smoke-0.3.0.json, packaged-smoke-minimum-0.3.0.json and artifacts-0.3.0.json. Screenshots normal-light.png, normal-dark.png, settings.png, mini-self.png and mini-self-minimum.png show the real packaged UI; preview media in screenshots is explicitly synthetic. These images do not prove composited visibility over a movie. Version-specific hashes and source/lock/build provenance are in out/distribution/0.3.0.
+
+Still pending: live automatic Host/Join with Tailscale (the command runner is controlled in tests to avoid changing real services), first-install/login/VPN/HTTPS approval, actual two-Mac/no-TURN connectivity, hardware1080p/CPU/bandwidth/thermal performance, partner full-screen overlay, downloaded installation/update and a three-hour call. No local generated-media result replaces these gates.
+
+## Historical 0.2.0 evidence
 
 Recorded 2026-10-14. Local host: Mac17,8 / Apple M5 Pro, arm64, macOS 26.6.2 (25G83); Xcode 27.0; Node 24.21.0; npm 11.19.0. Locked Electron 44.7.1 / Chromium 152.0.7977.149, Forge 8.0.1, TypeScript 6.0.3, ws 8.22.0. No partner Mac or Tailscale installation was available. No tailnet or system security settings were changed.
 

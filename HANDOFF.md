@@ -1,8 +1,29 @@
 # ZoomTime handoff
 
-Updated 2026-10-14. Version 0.2.0 is an implemented calling **release candidate**. Physical release acceptance remains pending. This supersedes the earlier probe-only status; preserve the 0.1.0 archives as historical window-probe builds.
+Updated 2026-10-15. Version **0.3.0** is the current local calling candidate. It is not published. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
 
-## Final build and OS approval
+## 0.3.0 camera, setup and window iteration
+
+User requested mirroring their own view, optional resizable self-preview in mini mode, higher selectable camera quality, in-app Tailscale setup, a full-screen/minimize fix and Apple-style UI refinement. Implemented without new dependencies or media/signaling architecture changes:
+
+- Persistent preferences: local-only mirroring, optional mini self-preview, relative preview size18–45% (corner drag and accessible slider), and360p/24,720p/30 default,1080p/30 capture preferences. Existing geometry settings migrate; pairing stays separate/encrypted. Same local/partner elements and peer survive transitions. Live quality uses applyConstraints; camera rejection leaves the old choice in effect. Stats expose actual capture dimensions/fps.
+- Main-only fixed-command Tailscale setup on explicit Host/Join. Opens the known installed app; attempts to connect an existing stopped session; Host discovers current DNS/HTTPS eligibility, inspects/rechecks Serve and configures only its unused private8443 port. Reuses an exact owned endpoint and refuses conflicts, stale-hostname entries, Funnel and foreground services. No shell/arbitrary command bridge, raw CLI output or automatic invitations. Initial account/VPN/HTTPS approval remains interactive. No live tailnet settings were changed during this implementation/test pass. Paired launches retain pairing; if Tailscale was explicitly disconnected it still needs reconnection in its app before an existing pairing retries.
+- Native full-screen entry/exit is serialized and awaited before mini/Dock actions; normal bounds are retained. Native minimize state was asserted, not inferred. Escape, Command-M, Command-Shift-M and the Window menu are available. Settings closes when switching to mini so its modal cannot obscure the call.
+- System light/dark appearance, restrained colors, compact controls, explicit Host/Join onboarding, grouped Settings with Command-comma, focus/hover controls and reduced-motion support. No second product window/framework/remote assets.
+
+Fresh local verification: **52 tests pass**, typecheck/lint/diff-check pass. Real WebRTC generated-media suite passes in133.067s, including720p/1080p/360p capture changes, rejection/rollback and camera reacquisition without peer replacement, existing lifecycle/recovery/cleanup and real60-second ringing. This is not a133-second continuous call or hardware evidence. Packaged arm64 smoke passes24 groups at320×180 and160×90: security boundaries, Keychain/authenticated host/reset, actual native full-screen→mini and Dock with native minimized flag, saved normal bounds, preview drag/persistence, local-only mirror, Settings slider/checkbox, modal closure, keyboard and light/dark screenshots. Both architecture builds pass signature, architecture, metadata, privacy descriptions, fuse, minimal ASAR payload and ZIP checks. x64 has not run on Intel.
+
+Artifacts: out/make/zip/darwin/{arm64,x64}/ZoomTime-darwin-ARCH-0.3.0.zip; checksums/manifest under out/distribution/0.3.0. Tests use isolated profiles and generated media; no real pairing was read/copied/sent. Current GitHub download is still0.2.0. Do not publish automatically. Pending: live automatic Host/Join on real Tailscale installations (command orchestration has controlled-runner coverage), real two-Mac/two-network media, physical quality/performance, partner overlay and three-hour session. These remain release blockers. No STUN/TURN fallback.
+
+## 2026-10-15 field connection failure
+
+User screenshots: host signaling online/waiting, guest signaling offline/host unavailable. This is a signaling reachability failure before WebRTC; do not call it evidence that the no-TURN media architecture failed. Live checks found ZoomTime listening on loopback47831, Tailscale running, and HTTPS8443 configured for an old hostname that no longer resolved. The current device DNS/certificate hostname differed. The user confirmed entering the stale endpoint and explicitly approved refreshing only ZoomTime’s private Serve configuration.
+
+The normal port-off command failed with handler-not-found because the entry was keyed by the old hostname. Using Tailscale’s local configuration API, the agent moved only that owned Web hostname entry to the current DNS name, preserving HTTPS8443 and proxy127.0.0.1:47831. It checked no other services were present and preserved all other fields. No Serve reset, Funnel, grants, TLS bypass, account or pairing-secret changes. A private pre-change backup and redacted verification are in ignored out/verification. Initial certificate requests timed out while provisioning; a subsequent verified-TLS WSS connection reached the backend and returned expected401 without credentials, and fresh HTTPS returned expected404 for a normal non-WebSocket request.
+
+Pending user actions: host resets ZoomTime pairing and recreates host with the current actual WSS hostname, copies a fresh invitation privately; guest resets her app pairing and imports it. Both should reach Ready to call before attempting media. The agent did not read/copy/send an invitation or operate the friend’s Mac. Actual authenticated cross-Mac/media/long-call acceptance remains unverified. Keep personal DNS names out of public documentation.
+
+## Historical 0.2.0 final build and OS approval
 
 The exact 0.2.0 archives were rebuilt from clean application source6a7bdc40109403a2ce64b2301c361c0f3b32491d. Both pass signature/architecture/metadata/payload/fuse/ZIP and SHA-256 checks. The final packaged smoke passes all20 groups at both sizes, including actual safeStorage encrypt/decrypt and reset.
 
@@ -26,7 +47,7 @@ Tailscale was absent during the original build tests. The user subsequently inst
 
 Read docs/ARCHITECTURE.md for every decision's reason and source boundaries. Main/preload own secrets/permissions; renderer owns media. Do not turn these ordinary modules into a generic backend/plugin framework.
 
-## Verification
+## Historical 0.2.0 verification
 
 Local Mac17,8 / M5 Pro, arm64, macOS26.6.2; Node24.21.0/npm11.19.0/Xcode27.0. `npm test`:43 pass. Typecheck/lint pass. Real local WebRTC suite:pass in132.3s, including actual positive/negative getUserMedia permission flow using generated test devices, bidirectional generated media, early/stale ICE, identity continuity across resize/socket recovery/ICE restart, mute/camera/devices, late cancellation, explicit audio-only/mic failure, lost-request30s cleanup, second call, frozen-video detection/one restart/30s recovery cleanup, and real60s ringing cleanup.
 

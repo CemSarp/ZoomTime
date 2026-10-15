@@ -19,7 +19,7 @@ async function probePermissions(): Promise<void> {
 const captured: MediaStreamTrack[] = [];
 const freezeVideo = new Map<MediaStreamTrack, () => void>();
 let delayNext = false, releasePending: (() => void) | null = null, autoAccept = true;
-let failVideo = false, failAudio = false;
+let failVideo = false, failAudio = false, useDeviceVideo = false;
 let firstPeer: RTCPeerConnection | null = null;
 let mustStayMuted = false, unsafeAudioReplacement = false;
 const replaceTrack = RTCRtpSender.prototype.replaceTrack;
@@ -32,7 +32,9 @@ Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: async (co
   if(failVideo&&constraints.video){failVideo=false;throw new DOMException('Test camera unavailable','NotReadableError');}
   if(failAudio&&constraints.audio){failAudio=false;throw new DOMException('Test microphone denied','NotAllowedError');}
   const tracks: MediaStreamTrack[] = [];
-  if (constraints.video) {
+  if (constraints.video && useDeviceVideo) {
+    const stream = await systemCapture({ audio: false, video: constraints.video }); tracks.push(...stream.getVideoTracks());
+  } else if (constraints.video) {
     const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 360;
     const ctx = canvas.getContext('2d')!;
     let stopped = false;
@@ -58,6 +60,16 @@ let latest: CallingState;
 window.harness.event(message => {
   if (message.type === 'action') {
     if (message.action === 'probe-permissions') void probePermissions();
+    if (message.action === 'use-device-video') { useDeviceVideo = true; void call.retryDevices(); }
+    if (message.action === 'use-canvas-video') { useDeviceVideo = false; void call.retryDevices(); }
+    if (message.action === 'fail-quality') {
+      const track = (local.srcObject as MediaStream).getVideoTracks()[0], apply = track.applyConstraints.bind(track);
+      track.applyConstraints = async () => { throw new DOMException('Test camera cannot change resolution', 'OverconstrainedError'); };
+      void call.setQuality('1080p').then(() => window.harness.result({ type: 'quality', unexpected: true }), error => window.harness.result({ type: 'quality', failed: true, error: error.message, capture: track.getSettings() })).finally(() => { track.applyConstraints = apply; });
+    }
+    if (message.action === 'quality720') void call.setQuality('720p').then(() => window.harness.result({ type: 'quality', quality: '720p', capture: local.srcObject instanceof MediaStream ? local.srcObject.getVideoTracks()[0]?.getSettings() : null }));
+    if (message.action === 'quality1080') void call.setQuality('1080p').then(() => window.harness.result({ type: 'quality', quality: '1080p', capture: local.srcObject instanceof MediaStream ? local.srcObject.getVideoTracks()[0]?.getSettings() : null }));
+    if (message.action === 'quality360') void call.setQuality('360p').then(() => window.harness.result({ type: 'quality', quality: '360p', capture: local.srcObject instanceof MediaStream ? local.srcObject.getVideoTracks()[0]?.getSettings() : null }));
     if (message.action === 'start') { mustStayMuted=false; void call.start('call'); }
     if (message.action === 'camera') void call.toggleCamera();
     if (message.action === 'mute') { call.toggleMute(); mustStayMuted=call.state.muted; }
