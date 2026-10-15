@@ -2,6 +2,10 @@
 
 Updated 2026-10-15. Version **0.3.2** is the current published GitHub prerelease. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
 
+## 2026-10-15 README restructure (documentation only)
+
+User requested a friendlier, visual README and a filled-in GitHub About section. The previous README was moved verbatim (relative links adjusted only) to docs/TECHNICAL_GUIDE.md; README.md is now a user-facing overview with Mermaid diagrams, badges, download links, setup flow, privacy summary, a status note that keeps partner-Mac/two-network/Intel/three-hour gates explicitly pending, and reference links. No source, build, release asset or tailnet change. Keep both files current: user-facing summaries in README, detailed install/controls/troubleshooting/build notes in docs/TECHNICAL_GUIDE.md.
+
 ## 2026-10-15 v0.3.2 publication
 
 The user explicitly requested pushing all changes and creating a GitHub release. The three existing descriptive feature commits were pushed without rewriting history. Annotated tagv0.3.2 points to the exact clean binary-source commit9f57abe9cc43784a503c3f5e4a9eebb6533509ad. Both original ZIPs plus portable SHA256SUMS, INSTALL.md and original build-manifest.json were uploaded and verified as a draft, then published as a prerelease at https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2 . All five uploaded sizes/SHA-256 digests match local files. Personal configuration and secrets are excluded from the package payload; no real profile or tailnet settings changed.
