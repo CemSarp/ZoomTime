@@ -41,11 +41,11 @@
       </div>
       <details class="advanced"><summary>Manual host setup</summary><form id="host-form"><label for="endpoint">Private Tailscale endpoint</label><div class="row"><input id="endpoint" type="url" maxlength="512" autocomplete="off" spellcheck="false" placeholder="wss://your-mac.your-tailnet.ts.net:8443/zoomtime" required /><button id="manual-host" type="submit">Use endpoint</button></div><p class="small">Use only if private Serve is already configured on port 8443 → localhost:47831.</p></form></details>
     </section>
-    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><span class="spacer"></span><button id="copy-invitation" type="button" hidden>Copy invitation</button><button id="retry" type="button">Retry connection</button><button id="reset" class="subtle" type="button">Reset pairing…</button></div></section>
+    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><span class="spacer"></span><button id="copy-invitation" type="button" hidden>Copy invitation</button><button id="retry" type="button">Retry connection</button><button id="reset" class="danger" type="button">Reset pairing…</button></div></section>
     <p id="toast" role="status" class="small"></p>
     <details class="diagnostics"><summary>Connection details</summary><p>Session <span id="session">—</span> · Uptime <span id="elapsed">00:00</span> · Window <span id="size">900 × 600</span></p><pre id="statistics">No active media connection.</pre></details>
     <p id="preferences" class="notice" role="status" hidden>Preferences could not be saved. Check available disk space, then retry.</p>
-    <footer><span>Private by design <span aria-hidden="true">·</span> No recording</span><span class="spacer"></span><button id="open-settings" class="subtle" type="button" title="Settings (⌘,)">Settings…</button></footer>
+    <footer><span>Private by design <span aria-hidden="true">·</span> No recording</span><span class="spacer"></span><button id="open-settings" type="button" title="Settings (⌘,)">Settings…</button></footer>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="settings-header"><div><p class="eyebrow">MAKE IT YOURS</p><h2 id="settings-title">Call settings</h2></div><button id="settings-close" type="button" aria-label="Close settings">Done</button></div>
@@ -59,6 +59,16 @@
       <label class="setting-row" for="mini-self-setting"><span><strong>Show me in mini mode</strong><small>Keep a small self-preview alongside your partner.</small></span><input id="mini-self-setting" type="checkbox" role="switch" /></label>
       <label class="setting-row" for="preview-size"><span><strong>Self-preview size</strong><small>Applies in both modes. You can also drag its bottom-right corner.</small></span><input id="preview-size" type="range" min="18" max="45" step="1" aria-label="Self-preview size" /></label>
     </div>
+    <section class="settings-group device-check" aria-labelledby="check-title">
+      <h3 id="check-title">Camera &amp; microphone check</h3>
+      <p id="check-help" class="setting-help">Preview yourself and test your voice before calling. Nothing is sent or recorded. End your call before running a check.</p>
+      <div class="row"><button id="check-start" type="button">Start camera &amp; mic check</button><button id="check-stop" type="button" hidden>Stop check</button></div>
+      <p id="check-status" class="setting-help" role="status">Devices are off.</p>
+      <video id="check-video" autoplay muted playsinline disablepictureinpicture aria-label="Local camera check preview" hidden></video>
+      <div id="check-audio" hidden><label for="check-level" class="setting-help">Microphone level</label><meter id="check-level" min="0" max="100" value="0" aria-label="Microphone input level"></meter>
+      <label class="setting-row" for="check-listen"><span><strong>Listen to my microphone</strong><small>Use headphones to prevent speaker feedback. Listening starts only when you turn this on.</small></span><input id="check-listen" type="checkbox" role="switch" disabled /></label></div>
+      <p id="check-error" class="notice" role="alert" hidden></p>
+    </section>
     <p id="settings-error" class="notice" role="alert" hidden></p>
     <p class="setting-help">Each Mac plays its own movie. ⌘⇧M toggles the floating mini window. Escape restores it or exits full screen.</p>
   </dialog>

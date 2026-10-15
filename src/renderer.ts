@@ -1,5 +1,6 @@
 import stylesheet from './index.css';
 import { decodePreferences, type Preferences, type VideoQuality } from './preferences.ts';
+import { DeviceCheck } from './device-check.ts';
 import { MediaCall } from './media-call.ts';
 import type { CallingState } from './calling-service.ts';
 import type { WindowState } from './bridge.ts';
@@ -20,6 +21,7 @@ let calling: CallingState = { role: null, endpoint: null, call: null, peerOnline
 let action: 'call' | 'accept' = 'call'; let setupBusy = false; let uiError = ''; let playbackResumed = false;
 const remote = element<HTMLVideoElement>('remote'), local = element<HTMLVideoElement>('local');
 const media = new MediaCall(window.zoomtime, { local, remote, changed: () => render() });
+const check = new DeviceCheck(window.zoomtime, element<HTMLVideoElement>('check-video'), () => renderCheck());
 function error(error: unknown): void { uiError = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'That action failed. Check the connection and retry.'; render(); }
 function run(operation: () => Promise<unknown>): void { uiError = ''; void operation().catch(error); }
 async function setup(operation: () => Promise<void>): Promise<void> {
@@ -61,11 +63,25 @@ async function updatePreferences(patch: Partial<Preferences>): Promise<void> {
   } finally {
     settingsBusy = false;
     for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self']) (element(id) as HTMLInputElement).disabled = false;
+    renderCheck();
   }
 }
-function openSettings(): void { show('settings-error', false); if (!settings.open) settings.showModal(); }
-function applyCalling(state: CallingState): void { calling = state; media.handleState(state); render(); }
+function renderCheck(): void {
+  const state = check.state, busy = state.active || state.capturing;
+  disabled('check-start', !!calling.call || media.state.capturing || !!local.srcObject || busy);
+  show('check-start', !busy); show('check-stop', busy); show('check-video', state.active); show('check-audio', state.active);
+  element<HTMLInputElement>('check-listen').disabled = !state.active;
+  element<HTMLInputElement>('check-listen').checked = state.listening;
+  element<HTMLMeterElement>('check-level').value = state.level;
+  element<HTMLSelectElement>('quality').disabled = settingsBusy || busy;
+  const status = state.capturing ? 'Waiting for camera and microphone permission…' : state.active ? state.listening ? 'Devices on · listening through your output device · use headphones.' : 'Devices on · speak to check the meter. Listening is off.' : 'Devices are off.';
+  if (element('check-status').textContent !== status) element('check-status').textContent = status;
+  element('check-error').textContent = state.error; show('check-error', !!state.error);
+}
+function openSettings(): void { show('settings-error', false); renderCheck(); if (!settings.open) settings.showModal(); }
+function applyCalling(state: CallingState): void { calling = state; if (state.call && (check.state.active || check.state.capturing)) void check.stop('Device check stopped for the call.'); media.handleState(state); render(); }
 function render(): void {
+  renderCheck();
   const state = media.state, call = calling.call, active = !!call && call.phase !== 'ringing';
   const incoming = call?.phase === 'ringing' && call.caller !== calling.role;
   const outgoing = call?.phase === 'ringing' && !incoming;
@@ -124,8 +140,8 @@ element('import').addEventListener('click', () => { void setup(() => window.zoom
 element('copy-invitation').addEventListener('click', () => { void setup(async () => { await window.zoomtime.copyInvitation(); element('toast').textContent = 'Invitation copied. It contains a secret; share it only with your partner.'; }); });
 element('retry').addEventListener('click', () => { void setup(() => window.zoomtime.retryConnection()); });
 element('reset').addEventListener('click', () => { if (!confirm('Reset pairing and end any active call? You will need to share a fresh invitation.')) return; media.stop(); void setup(() => window.zoomtime.resetPairing()); });
-element('call').addEventListener('click', () => { action = 'call'; run(() => media.start('call')); });
-element('accept').addEventListener('click', () => { action = 'accept'; run(() => media.start('accept')); });
+element('call').addEventListener('click', () => { action = 'call'; run(async () => { await check.stop(); await media.start('call'); }); });
+element('accept').addEventListener('click', () => { action = 'accept'; run(async () => { await check.stop(); await media.start('accept'); }); });
 element('audio-only').addEventListener('click', () => run(() => media.start(action, true)));
 for (const id of ['reject', 'cancel', 'hangup']) element(id).addEventListener('click', () => media.hangup());
 for (const id of ['mute', 'mini-mute']) element(id).addEventListener('click', () => media.toggleMute());
@@ -137,7 +153,12 @@ element('restore').addEventListener('click', () => run(() => window.zoomtime.res
 element('close').addEventListener('click', () => { if (calling.call || media.state.capturing || local.srcObject) media.hangup(); else run(() => window.zoomtime.close()); });
 element('minimize-window').addEventListener('click', () => run(() => window.zoomtime.minimize()));
 element('open-settings').addEventListener('click', openSettings);
-element('settings-close').addEventListener('click', () => settings.close());
+settings.addEventListener('close', () => { if (!settings.open) void check.stop(); });
+settings.addEventListener('cancel', () => { void check.stop(); });
+element('check-start').addEventListener('click', () => { void check.start(preferences.quality); });
+element('check-stop').addEventListener('click', () => { void check.stop(); });
+element('check-listen').addEventListener('change', () => { void check.listen(element<HTMLInputElement>('check-listen').checked); });
+element('settings-close').addEventListener('click', () => { void check.stop(); settings.close(); });
 element('mirror').addEventListener('change', () => { void updatePreferences({ mirror: element<HTMLInputElement>('mirror').checked }); });
 element('mini-self-setting').addEventListener('change', () => { void updatePreferences({ miniSelf: element<HTMLInputElement>('mini-self-setting').checked }); });
 element('mini-self').addEventListener('click', () => { void updatePreferences({ miniSelf: !preferences.miniSelf }); });
@@ -163,9 +184,9 @@ document.addEventListener('keydown', event => {
   }
 });
 remote.addEventListener('loadeddata', render);
-window.addEventListener('beforeunload', () => media.stop());
+window.addEventListener('beforeunload', () => { void check.stop(); media.stop(); });
 window.zoomtime.onState(applyWindow);
-window.zoomtime.onCallEvent(event => { if (event.type === 'state') applyCalling(event.state); else if (event.type === 'stop') media.stop(event.reason); else void media.handleSignal(event.message); });
+window.zoomtime.onCallEvent(event => { if (event.type === 'state') applyCalling(event.state); else if (event.type === 'stop') { if (check.state.active || check.state.capturing) void check.stop(event.reason); media.stop(event.reason); } else if (event.type === 'check-stop') void check.stop(event.reason); else void media.handleSignal(event.message); });
 run(async () => { applyWindow(await window.zoomtime.getState()); applyCalling(await window.zoomtime.getCallingState()); });
 setInterval(() => { const seconds = Math.floor((Date.now() - startedAt) / 1000); element('elapsed').textContent = `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`; }, 1000);
 render();

@@ -3,7 +3,7 @@ import { newHostPairing, readPairing, writePairing, type Pairing, type SecretCod
 import { SignalingClient, type NetworkStatus } from './signaling-client.ts';
 import { startSignaling } from './signaling.ts';
 export interface CallingState { role: Role | null; endpoint: string | null; network: NetworkStatus; peerOnline: boolean; call: CallSnapshot | null; error: string | null }
-export type CallingEvent = { type: 'state'; state: CallingState } | { type: 'signal'; message: ServerMessage } | { type: 'stop'; reason: string };
+export type CallingEvent = { type: 'state'; state: CallingState } | { type: 'signal'; message: ServerMessage } | { type: 'stop'; reason: string } | { type: 'check-stop'; reason: string };
 export type CaptureAction = 'call' | 'accept' | 'camera' | 'devices';
 export class CallingService {
   private file: string;
@@ -16,12 +16,26 @@ export class CallingService {
   private value: CallingState = { role: null, endpoint: null, network: { state: 'offline', message: 'Pair your two Macs to begin.' }, peerOnline: false, call: null, error: null };
   private capture = false;
   private captureDeadline = 0;
+  private checkDeadline = 0;
+  private checkTimer: ReturnType<typeof setTimeout> | undefined;
   private recovery: ReturnType<typeof setTimeout> | undefined;
   private ended: string[] = [];
   private revision = 0;
   constructor(file: string, codec: SecretCodec, publish: (event: CallingEvent) => void) { this.file = file; this.codec = codec; this.publish = publish; }
   get state(): CallingState { return structuredClone(this.value); }
   get captureAllowed(): boolean { return this.capture && (this.value.call !== null || Date.now() < this.captureDeadline); }
+  get deviceCheckAllowed(): boolean { return Date.now() < this.checkDeadline; }
+  authorizeDeviceCheck(): void {
+    if (this.value.call || this.captureAllowed || this.deviceCheckAllowed) throw new Error('End the call or current device check before starting another check.');
+    this.checkDeadline = Date.now() + 120_000;
+    clearTimeout(this.checkTimer);
+    this.checkTimer = setTimeout(() => this.endDeviceCheck('Device check stopped after two minutes.'), 120_000);
+  }
+  releaseDeviceCheck(): void { this.checkDeadline = 0; clearTimeout(this.checkTimer); this.checkTimer = undefined; }
+  endDeviceCheck(reason: string): void {
+    if (!this.checkDeadline) return;
+    this.releaseDeviceCheck(); this.publish({ type: 'check-stop', reason });
+  }
   private changed(): void { this.publish({ type: 'state', state: this.state }); }
   authorizeCapture(action: unknown): void {
     const call = this.value.call;
@@ -30,6 +44,7 @@ export class CallingService {
        (action === 'accept' && call?.phase === 'ringing' && call.caller !== this.value.role) ||
        ((action === 'camera' || action === 'devices') && call && call.phase !== 'ringing'));
     if (!allowed) throw new Error('Capture requires an explicit available Call, Accept or device-recovery action.');
+    this.endDeviceCheck('Device check stopped for the call.');
     this.capture = true; this.captureDeadline = Date.now() + 60_000;
   }
   releaseCapture(): void { this.capture = false; this.captureDeadline = 0; }
@@ -72,6 +87,7 @@ export class CallingService {
   }
   async retry(): Promise<void> { this.interrupt('Connection retried. Start a new call when ready.'); await this.disconnect(); this.value.error = null; this.pairing = readPairing(this.file, this.codec); await this.connect(); }
   interrupt(reason: string): void {
+    this.endDeviceCheck(reason);
     const call = this.value.call;
     if (call) { this.client?.send({ v: 1, type: 'hangup', callId: call.id }); this.ended.push(call.id); this.ended = this.ended.slice(-8); }
     this.releaseCapture(); clearTimeout(this.recovery); this.recovery = undefined; this.value.call = null;
@@ -88,6 +104,7 @@ export class CallingService {
       }
       const previous = this.value.call;
       if (previous && previous.id !== message.call?.id) this.interrupt('The previous call ended.');
+      if (message.call) this.endDeviceCheck('Device check stopped for an incoming call.');
       this.value.call = message.call; this.value.peerOnline = message.peerOnline;
       clearTimeout(this.recovery); this.recovery = undefined; this.changed();
     } else if (message.type === 'ended') {

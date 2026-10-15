@@ -1,8 +1,18 @@
 # ZoomTime handoff
 
-Updated 2026-10-15. Version **0.3.0** is the current local calling candidate. It is not published. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+Updated 2026-10-15. Version **0.3.1** is the current local calling candidate. It is not published. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
 
-## 0.3.0 camera, setup and window iteration
+## 0.3.1 button surfaces and local device check
+
+User requested a red Reset Pairing button, a visible Settings button, and local camera/voice checks. Reset now uses the existing danger style; Settings uses a regular bordered surface. Paired status gets its own row so actions wrap cleanly at640px. No network changes or new dependency.
+
+Settings now has Start camera & mic check, a muted local video, live microphone meter, and opt-in Listen to my microphone. It works without pairing and creates no peer/network/media recording. Quality/mirror preferences apply to preview. Monitoring starts at zero gain and is not persisted; headphones prevent feedback. Stop/Done/Escape, incoming/started call, mini mode, reload/sleep/quit and a two-minute cap clean up tracks/context/permission. Late captures are stopped. Call and check authorization are distinct: the check lease never authorizes call signaling and is refused during calls. macOS camera/microphone usage descriptions include this new explicit action. Initial permissions still need local OS approval.
+
+Fresh evidence: **54 unit tests pass**, typecheck/lint/diff check pass. Final real WebRTC/generated-device suite passes in133.306s; focused `node scripts/media-test.mjs --check-only` also passes. Tests reproduced/fixed an inactive analyser graph (zero-gain output now keeps the meter active), and a delayed enable overriding a newer monitoring Off (latest action now wins). They assert actual monitoring gain0→positive→0, live preview/meter, stop, late cancellation, permission failure/retry and existing calling/recovery/cleanup. Packaged arm64 tests pass26 groups at320×180 and160×90, with compact640×420 normal bounds in the minimum run. The actual shipped Settings flow is tested with generated devices: Start/listen/off/Stop/Done/mini and ended tracks; unpaired checks cannot authorize calls, cleanup revokes media permission, Reset is red and pairing controls do not overlap. Test launches alone enable generated devices and mute speaker output; normal app launches do neither. No hardware camera/mic was acquired by the agent.
+
+Both0.3.1 architecture ZIPs pass signature, architecture, bundle metadata, updated usage descriptions, security fuse, minimal ASAR payload, archive integrity and checksum checks. Out/distribution/0.3.1 contains hashes/manifest/INSTALL; versioned evidence lives in out/verification. No GitHub publish or real tailnet change. Physical microphone/headphone routing, hardware capture, Intel execution and the existing two-Mac/long-session gates remain pending. Previous archives are retained.
+
+## Historical 0.3.0 camera, setup and window iteration
 
 User requested mirroring their own view, optional resizable self-preview in mini mode, higher selectable camera quality, in-app Tailscale setup, a full-screen/minimize fix and Apple-style UI refinement. Implemented without new dependencies or media/signaling architecture changes:
 

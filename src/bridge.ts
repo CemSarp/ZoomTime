@@ -27,6 +27,8 @@ export interface ZoomTimeBridge {
   importInvitation(): Promise<void>;
   resetPairing(): Promise<void>;
   retryConnection(): Promise<void>;
+  authorizeDeviceCheck(): Promise<void>;
+  releaseDeviceCheck(): Promise<void>;
   authorizeCapture(action: CaptureAction): Promise<void>;
   releaseCapture(): Promise<void>;
   sendSignal(message: ClientMessage): Promise<void>;

@@ -26,7 +26,10 @@ test('reset revokes the old guest and retry failure releases authorized capture'
     const invitation = JSON.parse(service.invitation());
     guest = new SignalingClient('ws://127.0.0.1:47831/zoomtime', invitation.token, () => {}, () => {}); guest.start();
     await wait(() => service.state.peerOnline && service.state.network.state === 'online');
-    service.authorizeCapture('call'); service.send({ v: 1, type: 'request' }); await wait(() => service.state.call !== null);
+    service.authorizeDeviceCheck(); service.authorizeCapture('call');
+    assert.equal(service.deviceCheckAllowed, false); assert.ok(events.some(e => e.type === 'check-stop'));
+    service.send({ v: 1, type: 'request' }); await wait(() => service.state.call !== null);
+    assert.throws(() => service.authorizeDeviceCheck(), /End/);
     locked = true; await assert.rejects(service.retry(), /Keychain/);
     assert.equal(service.captureAllowed, false); assert.equal(service.state.call, null); assert.ok(events.some(e => e.type === 'stop'));
     locked = false; await service.reset(); assert.equal(service.state.role, null);
@@ -99,4 +102,33 @@ test('renderer reload and repeated OS interrupts immediately notify the peer and
     assert.equal(service.state.call, null); assert.equal(service.captureAllowed, false);
     await wait(() => ended > 0); assert.equal(ended, 1);
   } finally { guest?.stop(); await service.shutdown(); }
+});
+
+test('a local device-check lease cannot authorize signaling and stops idempotently', async () => {
+  const events: { type: string }[] = [];
+  const service = new CallingService(join(mkdtempSync(join(tmpdir(), 'zoomtime-check-')), 'pairing.bin'), unavailable, event => events.push(event));
+  try {
+    service.authorizeDeviceCheck();
+    assert.equal(service.deviceCheckAllowed, true);
+    assert.equal(service.captureAllowed, false);
+    assert.throws(() => service.authorizeDeviceCheck());
+    assert.throws(() => service.authorizeCapture('call'));
+    assert.throws(() => service.send({ v: 1, type: 'request' }));
+    service.endDeviceCheck('Stopped'); service.endDeviceCheck('Stopped again');
+    assert.equal(service.deviceCheckAllowed, false);
+    assert.equal(events.filter(e => e.type === 'check-stop').length, 1);
+    service.authorizeDeviceCheck(); await service.shutdown();
+    assert.equal(service.deviceCheckAllowed, false);
+  } finally { await service.shutdown(); }
+});
+test('device-check permission expires after two minutes', async context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const service = new CallingService(join(mkdtempSync(join(tmpdir(), 'zoomtime-check-')), 'pairing.bin'), unavailable, () => {});
+  try {
+    service.authorizeDeviceCheck(); context.mock.timers.tick(119_999);
+    assert.equal(service.deviceCheckAllowed, true);
+    context.mock.timers.tick(1);
+    assert.equal(service.deviceCheckAllowed, false);
+    assert.equal(service.captureAllowed, false);
+  } finally { await service.shutdown(); }
 });

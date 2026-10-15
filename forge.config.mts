@@ -15,8 +15,8 @@ const config: ForgeConfig = {
     appCategoryType: 'public.app-category.social-networking',
     appCopyright: 'Private ZoomTime prototype',
     extendInfo: { LSMinimumSystemVersion: '14.0',
-      NSCameraUsageDescription: 'ZoomTime uses your camera only when you start or accept a private call.',
-      NSMicrophoneUsageDescription: 'ZoomTime uses your microphone only when you start or accept a private call.' },
+      NSCameraUsageDescription: 'ZoomTime uses your camera when you start or accept a private call, or explicitly start a local camera and microphone check.',
+      NSMicrophoneUsageDescription: 'ZoomTime uses your microphone when you start or accept a private call, or explicitly start a local camera and microphone check.' },
     osxSign: {
       identity: '-', identityValidation: false,
       // Ad-hoc identities have no Team ID; hardened library validation rejects Electron's framework.

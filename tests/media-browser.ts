@@ -1,3 +1,4 @@
+import { DeviceCheck } from '../src/device-check.ts';
 import { MediaCall } from '../src/media-call.ts';
 import type { CallingState } from '../src/calling-service.ts';
 import type { ClientMessage, ServerMessage } from '../src/protocol.ts';
@@ -56,9 +57,26 @@ const local = document.querySelector<HTMLVideoElement>('#local')!, remote = docu
 local.muted = true; remote.muted = true;
 const call = new MediaCall({ authorizeCapture: action => window.harness.authorize(action), releaseCapture: () => window.harness.release(), sendSignal: m => window.harness.send(m) },
   { local, remote, changed: state => window.harness.result({ type: 'media', state, liveTracks: captured.filter(t => t.readyState === 'live').length, videoHeight: remote.videoHeight }) });
+const monitorGains: GainNode[] = [];
+const makeGain = AudioContext.prototype.createGain;
+AudioContext.prototype.createGain = function() { const gain = makeGain.call(this); monitorGains.push(gain); return gain; };
+const checkVideo = document.createElement('video'); checkVideo.muted = true; document.body.append(checkVideo);
+const deviceCheck = new DeviceCheck({ authorizeDeviceCheck: () => window.harness.authorize('check'), releaseDeviceCheck: () => window.harness.release() }, checkVideo,
+  state => window.harness.result({ type: 'check', state, monitorGain: monitorGains.at(-1)?.gain.value, liveTracks: captured.filter(t => t.readyState === 'live').length, videoHeight: checkVideo.videoHeight }));
 let latest: CallingState;
 window.harness.event(message => {
   if (message.type === 'action') {
+    if (message.action === 'check-start') void deviceCheck.start('720p');
+    if (message.action === 'check-stop') void deviceCheck.stop();
+    if (message.action === 'check-listen-race') {
+      const context = monitorGains.at(-1)!.context as AudioContext, resume = context.resume.bind(context);
+      let release!: () => void; context.resume = () => new Promise<void>(resolve => { release = resolve; });
+      void (async () => { const listening = deviceCheck.listen(true); await deviceCheck.listen(false); release(); await listening; context.resume = resume; window.harness.result({ type: 'check-race', state: deviceCheck.state, monitorGain: monitorGains.at(-1)!.gain.value }); })();
+    }
+    if (message.action === 'check-listen') void deviceCheck.listen(true);
+    if (message.action === 'check-silence') void deviceCheck.listen(false);
+    if (message.action === 'check-delay') { delayNext = true; void deviceCheck.start('720p'); }
+    if (message.action === 'check-fail') { failVideo = true; void deviceCheck.start('720p'); }
     if (message.action === 'probe-permissions') void probePermissions();
     if (message.action === 'use-device-video') { useDeviceVideo = true; void call.retryDevices(); }
     if (message.action === 'use-canvas-video') { useDeviceVideo = false; void call.retryDevices(); }

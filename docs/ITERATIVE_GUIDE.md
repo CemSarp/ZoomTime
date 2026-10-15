@@ -47,3 +47,7 @@ Done means actual two-Mac evidence, not compilation: authenticated usable calls,
 ## 2026-10-15 scoped iteration
 
 The user requested local-preview mirroring, optional resizable mini self-preview, quality controls, explicit in-app Tailscale Host setup, a full-screen/minimize fix and macOS visual refinement. These revise the partner-only mini and fixed360p defaults without changing the no-STUN/TURN architecture. Verify preferences migration/validation, Serve conflict preservation, actual native full-screen exit, preview/mirror/UI controls and live resolution changes. Actual two-device camera quality, CPU/bandwidth and long-call evidence remain pending; do not publish automatically.
+
+## 0.3.1 device-check iteration
+
+User revised capture scope to allow an explicit local camera/microphone check before pairing. Verify the distinct permission lease cannot authorize calls, expires/revokes, and rejects overlapping calls; test live preview/meter, zero initial monitoring gain, explicit listen/off, cancellation/late tracks, failed permission recovery and settings/mini/lifecycle cleanup. Keep capture off when Settings opens. Verify red Reset and bordered Settings at compact/normal sizes. Use generated devices for automated tests; physical headphone routing remains pending. No recording or tailnet mutation.

@@ -1,6 +1,19 @@
 # Verification evidence
 
 
+## 0.3.1 local candidate — 2026-10-15
+
+- `npm test`: **54 pass**, no failures/skips. Separate device-check permission, no call authorization through that lease, idempotent revoke, call takeover/rejection and two-minute expiration are covered.
+- `npm run typecheck`, `npm run lint`, `git diff --check`: pass.
+- `node scripts/media-test.mjs --check-only`: pass using real Chromium/generated video and audio, no hardware. Preview/meter work; gain is initially0, positive only after explicit listening, and0 after Off. A deliberately delayed enable cannot override a newer Off. Stop/cancel/late results, device denial and retry release tracks. The initial disconnected-output meter test failed and led to the zero-gain output fix; the delayed-enable test failed before the request guard fix.
+- `npm run test:media`: pass,133.306s total, includes those device-check cases and all existing real WebRTC/calling/quality/recovery/cleanup checks. This is not a long continuous call or acoustic listening evidence.
+- `npm run test:packaged`: **26 groups pass at both mini sizes**, minimum run also uses640×420 normal geometry. Actual packaged Settings starts/stops generated camera/mic, meter responds, monitoring toggles, Stop/Done/mini release all tracks, and the check cannot authorize an unpaired call. Permission revokes after cleanup. Computed button colors/surfaces and paired-action geometry pass. Existing isolation/CSP/IPC/auth/Keychain/native-window tests pass. The test launch uses generated devices and muted speaker output only; no insecure permission flags or hardware capture.
+- `npm run make:arm64`, `npm run make:x64`, `npm run checksums`, SHA verification: pass. Both artifacts pass deep/strict signatures, architecture/version/OS floor, check-purpose usage descriptions, security fuses, six-file bundled payload and ZIP integrity. Intel execution is untested. Dependencies are unchanged.
+
+Versioned evidence: out/verification/media-integration-0.3.1.json, packaged-smoke-0.3.1.json, packaged-smoke-minimum-0.3.1.json, artifacts-0.3.1.json. Screenshots device-check-active.png use generated imagery; paired.png/paired-compact.png show the real button styles. Hashes/build provenance/INSTALL are in out/distribution/0.3.1. No publication or live Tailscale change.
+
+Pending: physical camera, acoustic microphone/headphone routing and feedback/latency, Intel execution, downloaded update, actual two-Mac/no-TURN and long-call acceptance. Existing0.3.0/0.2.0 evidence below is historical.
+
 ## 0.3.0 local candidate — 2026-10-15
 
 Same local hardware/toolchain as below. New source is local; no GitHub publication or live tailnet mutation during these tests. No dependency additions/upgrades. Existing0.2.0 release remains unchanged.

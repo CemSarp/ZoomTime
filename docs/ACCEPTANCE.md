@@ -14,6 +14,7 @@ Record per run: date, tester, both Mac models/processors and macOS versions, app
 | Full-screen overlay | Visible/live over each actual player, keyboard controls usable, no focus stealing | User's Mac reported pass; partner pending |
 | Window controls | Reach 160×90, freely resize/move, aspect-fit; controls via hover and keyboard | Local packaged automation passes; partner pending |
 | Mode continuity | Same call/renderer/tracks through repeated mode switches | Local renderer/video and real-peer resize tests pass; actual call workflow pending |
+| Pre-call device check | Explicit local preview/meter and opt-in microphone monitoring; stopping releases devices | Generated-media/packaged checks and lease expiry pass; physical headphone routing/feedback pending |
 | Camera settings | Local preview mirror/mini visibility/size; quality changes without a new peer | Packaged preview/drag/settings tests and generated720p/1080p capture pass; real camera/remote image quality pending |
 | Automatic network setup | Explicit Host discovers/configures private8443; conflicts stay unchanged; Join starts Tailscale | Controlled command-runner tests pass; live Host/Join and first-time OS/account approval pending |
 | Full-screen exit | Mini/Dock/Escape work without reopening the app | Actual arm64 native full-screen→mini and Dock tests pass; partner pending |

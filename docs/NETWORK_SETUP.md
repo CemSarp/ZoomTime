@@ -7,11 +7,11 @@ There are two separate invitations:
 - **Tailscale invitation:** lets her Mac join your private network.
 - **ZoomTime invitation:** pairs the two apps. It contains a secret; send it privately, never through a public GitHub issue.
 
-Your Mac is the **host**. Her Mac is the **guest**. With ZoomTime0.3.0, neither Mac needs Terminal setup. Once paired, either person can start a call; both Macs, both apps and Tailscale must be running.
+Your Mac is the **host**. Her Mac is the **guest**. With ZoomTime0.3.1, neither Mac needs Terminal setup. Once paired, either person can start a call; both Macs, both apps and Tailscale must be running.
 
 ## 1. Install ZoomTime on both Macs
 
-**Version note:** 0.3.0 adds the automatic Host flow below and is currently a local build, not published to GitHub. Install the supplied 0.3.0 ZIP on both Macs to use it. The existing GitHub0.2.0 download below requires the legacy manual setup further down.
+**Version note:** 0.3.1 includes the automatic Host flow below and is currently a local build, not published to GitHub. Install the supplied 0.3.1 ZIP on both Macs to use it. The existing GitHub0.2.0 download below requires the legacy manual setup further down.
 
 Open the [0.2.0 download page](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0). Under **Assets**, choose:
 
@@ -44,7 +44,7 @@ If she cannot choose your network, use Tailscale's sign-in/account/network selec
 
 ## 3. On your Mac: click Host
 
-1. Open ZoomTime0.3.0 and click **Host on this Mac**.
+1. Open ZoomTime0.3.1 and click **Host on this Mac**.
 2. ZoomTime opens the installed Tailscale app. Finish any first-time sign-in or macOS VPN approval there, then click Host again if asked. You must already have Tailscale installed in Applications.
 3. The app detects your actual private hostname and checks port8443. If unused, it configures private HTTPS forwarding to ZoomTime. No terminal commands or manually copied address are needed.
 4. If HTTPS certificates are not enabled, open the [Tailscale DNS page](https://login.tailscale.com/admin/dns), enable MagicDNS/HTTPS certificates, then retry Host. ZoomTime cannot grant account-owner approval for you. Tailscale publishes certificate hostnames to certificate-transparency logs. Use a machine name you are comfortable having in those logs. [Tailscale HTTPS guidance](https://tailscale.com/docs/how-to/set-up-https-certificates)
@@ -55,7 +55,7 @@ A different service, public Funnel, foreground service or old-hostname configura
 ## 4. On her Mac: join
 
 1. Copy the entire ZoomTime invitation you sent to her clipboard.
-2. Open ZoomTime0.3.0 and click **Paste partner’s invitation**.
+2. Open ZoomTime0.3.1 and click **Paste partner’s invitation**.
 3. Finish any Tailscale sign-in/VPN or Keychain approval locally, then retry Join if needed.
 4. Both apps should say **Ready to call**. Do not set up both Macs as hosts.
 
@@ -153,6 +153,12 @@ Open **Settings…** or press **⌘,**. Choose 720p for normal use, 1080p for mo
 **Mirror my preview** flips only your own view. **Show me in mini mode**, or **You** in mini controls, shows your muted self-preview. Drag its bottom-right corner or use the size slider to resize it in either mode. All five controls remain accessible by hover/Tab at160×90. The preview hides when your camera is off.
 
 Escape exits app full screen or restores mini; **⌘M / −** minimizes to Dock after leaving full screen. Dock minimization hides the video window while the call continues. Use **⌘⇧M / Mini window** to keep it floating above your movie.
+
+## Check camera and voice before calling (0.3.1)
+
+Open **Settings… → Camera & microphone check** and click **Start camera & mic check**. Allow camera/microphone if macOS asks. Your video appears and the microphone meter moves when you speak. To hear your own voice, use headphones and enable **Listen to my microphone**; it is off by default. The sound is live, never recorded or sent to your partner.
+
+Stop check or close Settings when finished. The check also stops after two minutes, when a call arrives/starts, or on mini/sleep/reload/quit. End an active call before checking devices. A cancelled permission prompt may finish later; those returned tracks are discarded. A device/permission error provides a retry without starting a call.
 
 ## If something does not work
 

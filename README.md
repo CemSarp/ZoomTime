@@ -2,7 +2,13 @@
 
 A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
 
-**Version 0.3.0 is the current local calling candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+**Version 0.3.1 is the current local calling candidate.** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](docs/VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+
+## What changed in 0.3.1
+
+Reset Pairing is a red destructive button and Settings is a visible bordered button. Paired actions wrap without overlapping at the compact normal window size.
+
+Open **Settings… → Camera & microphone check → Start camera & mic check** to preview your camera and watch the microphone meter, even before pairing. Turn on **Listen to my microphone** to hear yourself live through the current macOS output device; use headphones to prevent feedback. Listening starts off and is never remembered. Nothing is recorded or sent. Stop check, Done/Escape, mini mode, an incoming/started call, sleep/reload/quit or the two-minute limit releases the devices. End an active call before starting a check. Stop the check to change camera quality; the preview uses the selected quality and mirror preference.
 
 ## What changed in 0.3.0
 
@@ -15,7 +21,7 @@ A private two-person Mac calling app with a small, resizable floating window. Ea
 
 ## Install
 
-The new 0.3.0 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have **not been published**. The existing GitHub download below remains 0.2.0 and does not include these changes.
+The new 0.3.1 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have **not been published**. The existing GitHub download below remains 0.2.0 and does not include these changes.
 
 **[Download ZoomTime 0.2.0 for Mac](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0)** — open Assets and choose Apple Silicon (arm64) or Intel (x64). Download the app ZIP, not Source code.
 
@@ -25,7 +31,7 @@ The new 0.3.0 ZIPs are local under `out/make/zip/darwin/{arm64,x64}/`; they have
 macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
 1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
-2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/SHA256SUMS). For the new local builds, use `out/distribution/0.3.0/SHA256SUMS` instead; never compare different versions’ hashes.
+2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/SHA256SUMS). For the new local builds, use `out/distribution/0.3.1/SHA256SUMS` instead; never compare different versions’ hashes.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
 

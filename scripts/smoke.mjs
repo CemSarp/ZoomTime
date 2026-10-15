@@ -13,13 +13,13 @@ assert.ok(existsSync(executable), 'Run npm run make:arm64 first, or pass an app 
 async function smoke(minimum) {
   const userData = mkdtempSync(join(tmpdir(), 'zoomtime-smoke-'));
   if (minimum) writeFileSync(join(userData, 'window-bounds.json'), JSON.stringify({ version: 1,
-    normal: null, mini: { x: 40, y: 40, width: 160, height: 90 } }));
+    normal: { x: 40, y: 40, width: 640, height: 420 }, mini: { x: 40, y: 40, width: 160, height: 90 } }));
   const server = createServer();
   await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
   const port = server.address().port;
   await new Promise(resolveClose => server.close(resolveClose));
   // Debugging is enabled only by this test launch, never by application code.
-  const child = spawn(executable, [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1', `--user-data-dir=${userData}`], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(executable, [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1', `--user-data-dir=${userData}`, '--use-fake-device-for-media-stream', '--mute-audio'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
   child.stderr.on('data', data => { stderr = (stderr + data).slice(-4000); });
   let socket;
@@ -58,7 +58,7 @@ async function smoke(minimum) {
       socket.send(JSON.stringify({ id: requestId, method, params }));
     });
     const evaluate = async expression => {
-      const reply = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, allowUnsafeEvalBlockedByCSP: false }, expression.split('(')[0].slice(0, 60));
+      const reply = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, userGesture: true, allowUnsafeEvalBlockedByCSP: false }, expression.split('(')[0].slice(0, 60));
       if (reply.exceptionDetails) throw new Error(reply.exceptionDetails.exception?.description ?? reply.exceptionDetails.text);
       return reply.result.value;
     };
@@ -80,7 +80,7 @@ async function smoke(minimum) {
     assert.equal(await evaluate('typeof require'), 'undefined');
     assert.equal(await evaluate('typeof process'), 'undefined');
     assert.equal(await evaluate('isSecureContext'), true);
-    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize'].sort());
+    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck'].sort());
     assert.equal(await evaluate("window.zoomtime.authorizeCapture('call').then(()=>false,()=>true)"), true, 'Unpaired apps cannot authorize capture');
     assert.equal(await evaluate("window.zoomtime.sendSignal({v:1,type:'request'}).then(()=>false,()=>true)"), true, 'Unpaired apps cannot signal a call');
     assert.deepEqual(await evaluate("window.zoomtime.getCallingState().then(s=>Object.keys(s).sort())"), ['call','endpoint','error','network','peerOnline','role']);
@@ -97,6 +97,10 @@ async function smoke(minimum) {
     assert.deepEqual(permissions, [{ name: 'camera', state: 'denied' }, { name: 'microphone', state: 'denied' }], 'Probe must deny media permission');
     const captureDenial = await evaluate("Promise.race([navigator.mediaDevices.getUserMedia({audio:true,video:true}).then(s=>{s.getTracks().forEach(t=>t.stop());return 'unexpected-capture';},e=>e.name),new Promise(r=>setTimeout(()=>r('pending'),2000))])");
     assert.equal(captureDenial,'NotAllowedError','Capture must be rejected before explicit authorization');
+    await evaluate('window.zoomtime.authorizeDeviceCheck()');
+    assert.equal(await evaluate("window.zoomtime.authorizeCapture('call').then(()=>false,()=>true)"),true,'Device check must not authorize an unpaired call');
+    await evaluate('window.zoomtime.releaseDeviceCheck()');
+    assert.equal(await evaluate("navigator.permissions.query({name:'camera'}).then(p=>p.state)"),'denied','Stopping local check revokes media permission');
     await delay(1000);
     const counter = () => evaluate('performance.now()');
     const firstFrame = await counter();
@@ -107,6 +111,29 @@ async function smoke(minimum) {
       const result = await send('Page.captureScreenshot');
       writeFileSync(join(output, name), Buffer.from(result.data, 'base64'));
     };
+    if (!minimum) {
+      const waitCheck = async (expression,label) => { for(let i=0;i<100;i++){if(await evaluate(expression))return;await delay(100);}assert.fail(label); };
+      const activeCheck = "document.getElementById('check-video').srcObject?.active && document.getElementById('check-level').value>0";
+      const startCheck = async () => {
+        await evaluate("document.getElementById('open-settings').click();document.getElementById('check-start').click()");
+        await waitCheck(activeCheck,'Actual packaged UI must preview generated camera and meter input');
+        await evaluate("window.__checkTracksForTest=document.getElementById('check-video').srcObject.getTracks()");
+      };
+      const stoppedCheck = "window.__checkTracksForTest.every(t=>t.readyState==='ended') && document.getElementById('check-video').srcObject===null";
+      await startCheck();
+      assert.equal(await evaluate("document.getElementById('check-listen').checked"),false,'Voice monitoring starts off');
+      assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.call===null)"),true,'Local check never starts a call');
+      await evaluate("document.getElementById('check-listen').click()");
+      await waitCheck("document.getElementById('check-status').textContent.includes('listening through')",'Explicit voice monitoring starts');
+      await evaluate("document.getElementById('check-listen').click()");
+      await waitCheck("document.getElementById('check-status').textContent.includes('Listening is off')",'Voice monitoring stops');
+      await evaluate("document.getElementById('check-title').scrollIntoView({block:'start'})"); await screenshot('device-check-active.png');
+      await evaluate("document.getElementById('check-stop').click()"); await waitCheck(stoppedCheck,'Stop releases actual capture tracks');
+      await startCheck(); await evaluate("document.getElementById('settings-close').click()"); await waitCheck(stoppedCheck,'Done releases camera and microphone');
+      await startCheck(); await evaluate("window.zoomtime.setMode('mini')"); await waitCheck(stoppedCheck,'Mini mode releases device check');
+      await evaluate('window.zoomtime.restore()');
+      assert.equal(await evaluate("navigator.permissions.query({name:'microphone'}).then(s=>s.state)"),'denied','Check cleanup revokes permission');
+    }
     if (!minimum) await screenshot('normal.png');
     assert.equal(await evaluate("window.zoomtime.setPreferences({mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true)"),true,'Invalid preferences must be rejected at IPC');
     await evaluate("window.zoomtime.setPreferences({mirror:true,miniSelf:true,quality:'1080p',previewSize:35})");
@@ -207,7 +234,11 @@ async function smoke(minimum) {
       for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.previewSize===38)break;await delay(50);}
       assert.equal((await evaluate('window.zoomtime.getState()')).preferences.previewSize,38,'Accessible slider resizes the self-preview');
 
+      assert.equal(await evaluate("getComputedStyle(document.getElementById('open-settings')).backgroundColor==='rgba(0, 0, 0, 0)'"),false,'Settings has a visible button surface');
+      assert.equal(await evaluate("document.getElementById('check-video').srcObject===null&&document.getElementById('check-listen').disabled"),true,'Opening settings never captures or enables voice monitoring');
       await screenshot('settings.png');
+      await evaluate("document.getElementById('check-title').scrollIntoView({block:'start'})"); await screenshot('device-check-panel.png');
+
       await evaluate("window.zoomtime.setMode('mini')"); assert.equal(await evaluate("document.getElementById('settings').open"),false,'Settings must not obscure a mini call');
       await evaluate('window.zoomtime.restore()');
       await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'dark'}]}); await screenshot('normal-dark.png');
@@ -216,6 +247,9 @@ async function smoke(minimum) {
     await evaluate("window.zoomtime.createHost('wss://local-test.tail.ts.net:8443/zoomtime')");
     for(let i=0;i<50;i++){if(await evaluate("window.zoomtime.getCallingState().then(s=>s.network.state==='online')"))break;await delay(50);}
     assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role==='host'&&s.network.state==='online'&&!s.peerOnline)"),true,'Packaged host must start authenticated loopback signaling');
+    assert.equal(await evaluate("(() => {const c=getComputedStyle(document.getElementById('reset')).backgroundColor.match(/\\d+/g).map(Number);return c[0]>170&&c[1]<100&&c[2]<120;})()"),true,'Reset pairing is clearly red');
+    assert.equal(await evaluate("(() => {const a=document.getElementById('reset').getBoundingClientRect(),b=document.getElementById('retry').getBoundingClientRect();return a.left>=0&&a.right<=innerWidth&&(a.left>=b.right||a.top>=b.bottom);})()"),true,'Pairing actions fit without overlap');
+    await screenshot(minimum ? 'paired-compact.png' : 'paired.png');
     const encrypted = readFileSync(join(userData,'pairing.bin'));
     assert.equal(encrypted.includes(Buffer.from('hostToken')),false);
     assert.throws(()=>JSON.parse(encrypted.toString('utf8')),'Pairing must not be plaintext JSON');
@@ -227,7 +261,7 @@ async function smoke(minimum) {
       packagedBundle: bundle, checks: ['bundled secure origin', 'no renderer Node', 'narrow bridge', 'production CSP',
         'blocked network/new window/navigation', 'invalid IPC rejected', 'unpaired capture and signaling denied', 'camera/microphone capture denied', 'renderer identity continuity', 'duplicate instance reuses renderer',
         minimum ? '160x90 mini' : '320x180 mini', 'controls fit native window', 'hover exposes controls', 'Tab reaches restore and close',
-        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
+        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation', 'explicit local device check, meter, monitor and cleanup (normal-size run)', 'red Reset and bordered Settings', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
       directCaptureDenial: captureDenial === 'NotAllowedError' ? 'rejected with NotAllowedError before explicit call authorization' : `inconclusive: ${captureDenial}`,
       physicalFullScreenGate: 'user reports own Mac passing; partner Mac pending', rendererSession };
     writeFileSync(join(output, minimum ? 'packaged-smoke-minimum.json' : 'packaged-smoke.json'), `${JSON.stringify(result, null, 2)}\n`);

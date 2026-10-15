@@ -80,6 +80,7 @@ async function createWindow(): Promise<void> {
   };
   const setMode = async (next: WindowMode): Promise<WindowState> => {
     if (next === mode) return state();
+    if (next === 'mini') calling.endDeviceCheck('Device check stopped for mini mode.');
     if (!window.isFullScreen() && !window.isMaximized()) remembered[mode] = window.getBounds();
     switching = true;
     try {
@@ -165,6 +166,8 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('pairing:import', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await connectTailscale(); await calling.importInvitation(await clipboard.readText()); });
   ipcMain.handle('pairing:reset', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.reset(); });
   ipcMain.handle('call:retry', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.retry(); });
+  ipcMain.handle('check:authorize', event => { authorize(event); calling.authorizeDeviceCheck(); });
+  ipcMain.handle('check:release', event => { authorize(event); calling.releaseDeviceCheck(); });
   ipcMain.handle('call:authorize', (event, action: unknown) => { authorize(event); calling.authorizeCapture(action); });
   ipcMain.handle('call:release', event => { authorize(event); calling.releaseCapture(); });
   ipcMain.handle('call:send', (event, value: unknown) => { authorize(event); calling.send(value); });
@@ -189,10 +192,10 @@ async function createWindow(): Promise<void> {
 
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => {
     const types = 'mediaTypes' in details ? details.mediaTypes ?? [] : [];
-    callback(contents === window.webContents && allowCallMedia(permission, details.requestingUrl, entry, details.isMainFrame, calling.captureAllowed, types));
+    callback(contents === window.webContents && allowCallMedia(permission, details.requestingUrl, entry, details.isMainFrame, (calling.captureAllowed || calling.deviceCheckAllowed), types));
   });
   session.defaultSession.setPermissionCheckHandler((contents, permission, _origin, details) =>
-    contents === window.webContents && allowCallMedia(permission, details.requestingUrl ?? '', entry, details.isMainFrame, calling.captureAllowed, details.mediaType ? [details.mediaType] : []));
+    contents === window.webContents && allowCallMedia(permission, details.requestingUrl ?? '', entry, details.isMainFrame, (calling.captureAllowed || calling.deviceCheckAllowed), details.mediaType ? [details.mediaType] : []));
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => callback({}));
   session.defaultSession.setDevicePermissionHandler(() => false);
   session.defaultSession.on('will-download', event => event.preventDefault());
@@ -203,7 +206,7 @@ async function createWindow(): Promise<void> {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
-  window.webContents.on('did-start-loading', () => { if (calling.state.call || calling.captureAllowed) calling.interrupt('App view reloaded. Start a new call explicitly.'); });
+  window.webContents.on('did-start-loading', () => { if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed) calling.interrupt('App view reloaded. Start a new call explicitly.'); });
   window.webContents.on('render-process-gone', () => { void calling.shutdown(); app.quit(); });
   window.webContents.on('did-fail-load', (_event, _code, _description, _url, isMainFrame) => {
     if (isMainFrame) { dialog.showErrorBox('Window test could not load', 'Restart ZoomTime or rebuild the package.'); app.quit(); }

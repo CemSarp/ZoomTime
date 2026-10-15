@@ -7,7 +7,7 @@ const root = process.cwd();
 const startedAt=Date.now();
 const windows = new Map(), clients = new Map(), reports = new Map(), ready = new Set(), timers = new Set();
 const identityReports=new Map(),dropRequests=new Set(),pendingCaptures=new Set();let snapshot=new Map();
-const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map();
+const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map(),checkResults=new Map(),checkRaceResults=new Map();
 const entry='zoomtime://app/main_window/index.html';
 protocol.registerSchemesAsPrivileged([{scheme:'zoomtime',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let server;
@@ -28,14 +28,14 @@ app.whenReady().then(async () => {
   session.defaultSession.setPermissionCheckHandler((contents,permission,_origin,details)=>allowCallMedia(permission,details.requestingUrl??'',entry,details.isMainFrame,[...windows].some(([role,w])=>w.webContents===contents&&authorized.has(role)),details.mediaType?[details.mediaType]:[]));
   session.defaultSession.setPermissionRequestHandler((contents,permission,callback,details)=>callback(allowCallMedia(permission,details.requestingUrl,entry,details.isMainFrame,[...windows].some(([role,w])=>w.webContents===contents&&authorized.has(role)),details.mediaTypes??[])));
   ipcMain.handle('harness:authorize',(event,action)=>{const role=roleOf(event),call=server.coordinator.snapshot;assert.ok(role);
-    assert.ok((action==='call'&&!call&&server.coordinator.isOnline(role==='host'?'guest':'host'))||(action==='accept'&&call?.phase==='ringing'&&call.caller!==role)||(['camera','devices'].includes(action)&&call&&call.phase!=='ringing'));authorized.add(role);});
+    assert.ok((action==='check'&&!call)||(action==='call'&&!call&&server.coordinator.isOnline(role==='host'?'guest':'host'))||(action==='accept'&&call?.phase==='ringing'&&call.caller!==role)||(['camera','devices'].includes(action)&&call&&call.phase!=='ringing'));authorized.add(role);});
   ipcMain.handle('harness:release',event=>{const role=roleOf(event);assert.ok(role);authorized.delete(role);});
   const tokens = { hostToken: randomBytes(32).toString('base64url'), guestToken: randomBytes(32).toString('base64url') };
   server = await startSignaling(tokens, 0);
   ipcMain.handle('harness:send', (event, message) => { const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0]; assert.ok(role); if(message.type==='request'&&dropRequests.delete(role))return; if(message.type in traffic[role])traffic[role][message.type]++; assert.equal(clients.get(role).send(message), true); });
   ipcMain.on('harness:result', (event, result) => {
     const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0];
-    if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); if(result.type==='quality')qualityResults.set(role,result); }
+    if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); if(result.type==='quality')qualityResults.set(role,result); if(result.type==='check')checkResults.set(role,result); if(result.type==='check-race')checkRaceResults.set(role,result); }
   });
   for (const role of ['host', 'guest']) {
     const window = new BrowserWindow({ width: 400, height: 300, show: true, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: join(root, 'tests/media-preload.cjs') } });
@@ -56,6 +56,26 @@ app.whenReady().then(async () => {
   await wait(() => server.coordinator.isOnline('host') && server.coordinator.isOnline('guest'), 'Both roles authenticate');
   action('host','probe-permissions');await wait(()=>permissionResults.has('host'),'Real getUserMedia permission probe finishes');
   assert.deepEqual(permissionResults.get('host'),{type:'permission-probe',denied:true,kinds:['audio','video']});
+  action('host','check-start'); await wait(()=>checkResults.get('host')?.state.active&&checkResults.get('host')?.state.level>0,'Local check previews camera and measures generated microphone input');
+  assert.equal(checkResults.get('host').state.listening,false); assert.equal(checkResults.get('host').monitorGain,0,'Microphone monitor must start at zero volume'); assert.equal(checkResults.get('host').liveTracks,2); assert.ok(checkResults.get('host').videoHeight>0);
+  assert.equal(server.coordinator.snapshot,null,'A local check must never create a call');
+  action('host','check-listen'); await wait(()=>checkResults.get('host')?.state.listening===true,'Explicit listening enables audio monitor');
+  assert.ok(checkResults.get('host').monitorGain>0&&checkResults.get('host').monitorGain<=0.61);
+  action('host','check-silence'); await wait(()=>checkResults.get('host')?.state.listening===false,'Listening can be disabled');
+  assert.equal(checkResults.get('host').monitorGain,0,'Turning listening off must silence the audio graph');
+  action('host','check-listen-race'); await wait(()=>checkRaceResults.has('host'),'Delayed monitoring enable finishes after a newer off action');
+  assert.equal(checkRaceResults.get('host').state.listening,false,'A late enable must never undo a newer Off action');
+  assert.equal(checkRaceResults.get('host').monitorGain,0);
+  action('host','check-stop'); await wait(()=>checkResults.get('host')?.liveTracks===0&&!checkResults.get('host')?.state.active,'Stopping device check releases tracks');
+  action('host','check-delay'); await wait(()=>pendingCaptures.has('host'),'Device check capture is pending');
+  action('host','check-stop'); action('host','release-capture'); await report();
+  assert.equal(snapshot.get('host').liveTracks,0,'A cancelled device check discards late media tracks');
+  pendingCaptures.delete('host');
+  action('host','check-fail'); await wait(()=>!!checkResults.get('host')?.state.error,'Device check permission/device errors are actionable');
+  assert.equal(checkResults.get('host').liveTracks,0); assert.equal(checkResults.get('host').state.active,false);
+  action('host','check-start'); await wait(()=>checkResults.get('host')?.state.active,'Device check can restart after failure');
+  action('host','check-stop'); await wait(()=>checkResults.get('host')?.liveTracks===0,'Repeated check releases devices');
+  if (process.argv.includes('--check-only')) { console.log('DEVICE_CHECK_TEST_PASS: camera, meter, explicit monitor, latest Off wins, stop, late capture cancellation, failure and retry; generated devices, no hardware.'); return; }
   const requestStarted=Date.now();dropRequests.add('host');action('host','start');await wait(()=>reports.get('host')?.liveTracks===2,'Outgoing capture awaits a deliberately lost call request');
   await wait(()=>reports.get('host')?.liveTracks===0,'Lost call-request acknowledgement must end capture within 30 seconds',35000);
   const requestTimeoutMs=Date.now()-requestStarted;
@@ -131,7 +151,7 @@ app.whenReady().then(async () => {
   const output=join(root,'out/verification');mkdirSync(output,{recursive:true});
   writeFileSync(join(output,'media-integration.json'),JSON.stringify({timestamp:new Date().toISOString(),durationMs:Date.now()-startedAt,versions:process.versions,architecture:process.arch,
     generatedMedia:true,singleMac:true,iceServers:[],requestTimeoutMs,staleRecoveryMs,ringTimeoutMs:Date.now()-ringStarted,mediaStatistics,
-    checks:['real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released'],
+    checks:['local camera/microphone check, meter, opt-in monitor, stop, late cancellation, error and retry','real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released'],
     pending:['hardware capture/routing','actual two-Mac/two-network call','native full-screen movie on partner Mac','three-hour session','downloaded installation/update']},null,2)+'\n');
   console.log('MEDIA_TEST_PASS: real local WebRTC, bidirectional audio/video, early ICE, stale generation, persistent peers on resize/reconnect/ICE restart, camera off/on, mute preserved during recovery, outgoing/incoming late capture cancellation, explicit audio-only fallback, microphone denial, second call, real 60-second ring timeout and cleanup. Two-Mac/network/hardware acceptance remains untested.');
 }).catch(error => { console.error('MEDIA_TEST_FAIL:', error.message, JSON.stringify({ phase: server?.coordinator.snapshot?.phase, traffic, reports: [...reports] })); process.exitCode = 1; }).finally(async () => {
