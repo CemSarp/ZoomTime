@@ -1,5 +1,11 @@
 # Verification evidence
 
+## v0.3.2 publication recheck — 2026-10-15
+
+User explicitly authorized pushing and publishing. All65 unit tests pass after the user closed the host occupying47831; the initial60pass/5port-conflict run was an environment collision, not a final passing run. Typecheck/lint/diff check pass. A fresh packaged rerun passes28 groups at each mini size, including Settings discovery after publication and existing security/device/window checks. Both unchanged packages again pass signature/architecture/metadata/fuse/minimal-payload/source-equality/ZIP and SHA-256 checks. Five uploaded asset sizes/digests match local files; the original clean build manifest and exact binary-source annotated tag9f57abe are retained. Public release and both ZIP links return HTTP200. Anonymous API discovery now selects0.3.2 on arm64/x64 for an older updater-enabled version and refuses equal-version downgrade. GitHub propagation briefly returned the older release list immediately after publishing; normal refresh then showed the new release. No runtime code or security settings changed.
+
+Published prerelease: https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2 . Uploaded binaries are the locally verified candidate described below, with the same pending physical evidence. Versioned release notes:docs/releases/v0.3.2.md. Raw GitHub metadata/checksum staging is ignored under out/release/0.3.2.
+
 ## 0.3.2 update candidate — 2026-10-15
 
 - `npm test`: **65 pass**, no failures/skips. Eleven update tests cover numeric version/no downgrade, architecture, drafts/prereleases, exact URLs and digests, malformed/oversized metadata, rate limits, HTTPS redirect boundaries, retries/serialization, truncated/excess/corrupt bytes, quarantine/readback and changed-file rejection before Finder.

@@ -1,6 +1,14 @@
 # ZoomTime handoff
 
-Updated 2026-10-15. Version **0.3.2** is the current local calling candidate. It is not published. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+Updated 2026-10-15. Version **0.3.2** is the current published GitHub prerelease. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+
+## 2026-10-15 v0.3.2 publication
+
+The user explicitly requested pushing all changes and creating a GitHub release. The three existing descriptive feature commits were pushed without rewriting history. Annotated tagv0.3.2 points to the exact clean binary-source commit9f57abe9cc43784a503c3f5e4a9eebb6533509ad. Both original ZIPs plus portable SHA256SUMS, INSTALL.md and original build-manifest.json were uploaded and verified as a draft, then published as a prerelease at https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2 . All five uploaded sizes/SHA-256 digests match local files. Personal configuration and secrets are excluded from the package payload; no real profile or tailnet settings changed.
+
+Fresh unit rerun initially encountered the running host on47831 (60pass/5port-conflict failures); the user closed it and the unchanged suite then passed all65 without skips. A fresh packaged rerun passes28 groups at both mini sizes. Typecheck/lint, deep/strict signatures, fuses, minimal payload, source equality, ZIP integrity and checksums pass. The anonymous GitHub releases list became visible after normal propagation and the app selects0.3.2 for older updater-enabled builds on both architectures, refusing downgrade/equal versions. Public release and both ZIP URLs return HTTP200. No runtime changes/rebuild were needed for publication. Current links/setup/update guides and versioned release notes are updated on main; tag retains the exact application-source revision.
+
+Physical partner-Mac installation/approval/routing, Intel execution, actual two-network/no-TURN media and long-session gates remain pending. Publication is an explicitly requested prerelease, not evidence that those gates passed. The earlier implementation sections below retain their pre-publication history.
 
 ## 0.3.2 explicit GitHub updates
 

@@ -1,6 +1,6 @@
 # Update ZoomTime
 
-Install the supplied0.3.2 ZIP once to get these controls. GitHub currently publishes0.2.0; it has no updater. New local builds are not published automatically.
+Install the matching ZIP from [GitHub v0.3.2](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2) once to get these controls. Version0.2.0 has no updater. Future local builds become available only after an explicit publication.
 
 1. Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**.
 2. If a newer build is published, review its version and **prerelease** label. Press **Download update**. The right Apple Silicon/Intel ZIP is selected for the running app. A prerelease is a test candidate; the two-Mac/long-session checks still apply.

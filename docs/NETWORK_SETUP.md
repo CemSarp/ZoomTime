@@ -11,14 +11,14 @@ Your Mac is the **host**. Her Mac is the **guest**. With ZoomTime0.3.2, neither 
 
 ## 1. Install ZoomTime on both Macs
 
-**Version note:** 0.3.2 includes the automatic Host flow below and is currently a local build, not published to GitHub. Install the supplied 0.3.2 ZIP on both Macs to use it. The existing GitHub0.2.0 download below requires the legacy manual setup further down.
+**Version note:** install the published0.3.2 app ZIP on both Macs to use the automatic Host flow, device checks and update controls. The older0.2.0 build needs the legacy manual setup further down.
 
-Open the [0.2.0 download page](https://github.com/CemSarp/ZoomTime/releases/tag/v0.2.0). Under **Assets**, choose:
+Open the [0.3.2 download page](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2). Under **Assets**, choose:
 
 | About This Mac shows | Download |
 | --- | --- |
-| Apple M1/M2/M3/M4/M5 or another Apple chip | [Apple Silicon / arm64 ZIP](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/ZoomTime-darwin-arm64-0.2.0.zip) |
-| Intel processor | [Intel / x64 ZIP](https://github.com/CemSarp/ZoomTime/releases/download/v0.2.0/ZoomTime-darwin-x64-0.2.0.zip) |
+| Apple M1/M2/M3/M4/M5 or another Apple chip | [Apple Silicon / arm64 ZIP](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-arm64-0.3.2.zip) |
+| Intel processor | [Intel / x64 ZIP](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-x64-0.3.2.zip) |
 
 Use Apple menu → About This Mac to check. Download the app ZIP, rather than GitHub's “Source code” archive. Neither of you needs Node, Xcode or a development environment. Requires macOS14+.
 
@@ -30,7 +30,7 @@ Use Apple menu → About This Mac to check. Download the app ZIP, rather than Gi
 
 Optional integrity check: download SHA256SUMS into the same folder as the app ZIPs and run `shasum -a 256 -c SHA256SUMS` there. This checks both archives; if you downloaded only one, compare `shasum -a 256 /path/to/your.zip` with its matching line instead. The checksums belong to these exact release files.
 
-These are unnotarized private builds, so a downloaded installation can have additional macOS prompts. Version0.2.0 is a prerelease: actual two-Mac/network and movie-session acceptance is still pending.
+These are unnotarized private builds, so a downloaded installation can have additional macOS prompts. Version0.3.2 is a prerelease: actual two-Mac/network and movie-session acceptance is still pending.
 
 After installing0.3.2 once, future published builds can be downloaded through **Settings → App updates**. Finish replacement in Finder after quitting. See [the update steps](UPDATES.md).
 
