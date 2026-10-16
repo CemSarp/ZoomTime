@@ -102,3 +102,5 @@ body[data-mode='mini'] .stage:hover .mini-controls, body[data-mode='mini'] .stag
 #paired .row { align-items: center; }
 #pairing-status { flex-basis: 100%; margin-bottom: 3px; color: var(--secondary); font-size: 12px; }
 footer { flex-wrap: wrap; row-gap: 8px; padding-bottom: 6px; }
+#screen-sources { display: block; width: 100%; margin: 8px 0 12px; }
+#screen-statistics { overflow: auto; max-height: 180px; white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -81,7 +81,7 @@ async function smoke(minimum) {
     assert.equal(await evaluate('typeof require'), 'undefined');
     assert.equal(await evaluate('typeof process'), 'undefined');
     assert.equal(await evaluate('isSecureContext'), true);
-    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'installUpdate', 'onUpdateState'].sort());
+    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'installUpdate', 'onUpdateState', 'getScreenCaptureState', 'openScreenCaptureSettings', 'discoverScreenSources', 'startScreenCapture', 'stopScreenCapture', 'revealScreenCapture', 'onScreenCaptureState'].sort());
     const updater = await evaluate('window.zoomtime.getUpdateState()');
     assert.equal(updater.status, 'idle', 'No network check runs at startup');
     assert.equal(updater.currentVersion, JSON.parse(readFileSync('package.json','utf8')).version);

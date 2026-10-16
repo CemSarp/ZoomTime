@@ -8,7 +8,7 @@ Record the complete agreed constraints, reasons, rejected alternatives, trust bo
 
 ## 1 — Window probe
 
-One sandboxed persistent renderer with labeled synthetic motion and frame counter. Normal/mini, 320×180 to 160×90, saved separate bounds, available-display recovery, floating across full-screen Spaces, accessible restore and keyboard controls, no repeated focus stealing. Test and package on arm64/x64. Actual full-screen playback on both Macs is the gate, not a mocked window flag.
+One sandboxed persistent renderer with labeled synthetic motion and frame counter. Normal/mini, 320×180 to 160×90, saved separate bounds, available-display recovery, floating across full-screen Spaces, accessible restore and keyboard controls, no repeated focus stealing. Future packaging targets arm64 only (Intel retired2026-10-17). Actual full-screen playback on both Macs is the gate, not a mocked window flag.
 
 ## 2 — Private signaling
 
@@ -34,7 +34,7 @@ Trace invitation, storage, authentication, messages, IPC, permissions, navigatio
 
 ## 7 — Private packaged installation
 
-Stable name/bundle identifier, arm64/x64 as needed, supported helper signing, no paid Apple membership/notarization. No secrets/logs/dev servers in packages. SHA-256, source revision, lockfile and exact build commands. Test downloaded clean install and update on her Mac without Node/Xcode. Document supported per-app approval, Keychain/permission prompts; never disable security globally.
+Stable name/bundle identifier, arm64 only, supported helper signing, no paid Apple membership/notarization. No secrets/logs/dev servers in packages. SHA-256, source revision, lockfile and exact build commands. Test downloaded clean install and update on her Mac without Node/Xcode. Document supported per-app approval, Keychain/permission prompts; never disable security globally.
 
 ## 8 — Movie session
 
@@ -69,3 +69,11 @@ User requested rebuilding current punctuation/text edits plus opt-in speaker ech
 ## 0.3.4 install-and-restart iteration
 
 User revised guided-only updates to explicit in-place install/restart before publication. Reuse fixed GitHub metadata/download verification; never build from source on the recipient. Test strict archive extraction (links, traversal, bounds, duplicates), signed fixture staging, bundle/version/architecture, quarantine, private helper handoff and parent wait, call guards, backup preservation and rollback. Package both architectures, keep the renderer bridge narrow, and keep Gatekeeper/Keychain/real installed upgrade evidence pending until physically tested. Do not publish automatically or delete old bundles/jobs/profiles.
+
+## 2026-10-17 native capture iteration
+
+User explicitly revises screen-capture scope. For a separately authorized build, build the bundled Swift helper for arm64 with macOS14 floor. Run `npm run test:capture` (real Metal composition and hardware H.264 encode/decode with labeled synthetic images, including slow-transport backpressure), `node scripts/capture-live-test.mjs` (real controlled windows/display), and `node scripts/capture-app-test.mjs` (packaged UI, isolated profile). Live tests require Screen Recording consent and create local private evidence; never reset TCC or alter security to make a test pass. Keep outputs local. Run full npm tests/typecheck/lint/diff; validate PNGs and decode saved H.264. Distinguish source switching on one screen from two-physical-display switching. Actual OS denial/recovery, protected-content availability, two-Mac transport, hardware power/long-call evidence remain separate gates. Do not promote private symbols to capture sources without known ABI, privilege requirements and verified images.
+
+## 2026-10-17 source-only follow-up
+
+User requests `codex/screen-capture` branch and GitHub source push, retires Intel/Rosetta and explicitly prohibits new builds now. Run full unit tests, TypeScript/lint/diff checks, Swift `-typecheck` only and script syntax checks. Do not run npm start/package/make, native build/test:capture, checksums or GUI tests against stale binaries. Retain all old artifacts/releases. Confirm source branch/remote and exact committed files; push without force. Document the TCC signature mismatch and earlier Codex attribution; repeat actual permission recovery only after a future build is authorized.

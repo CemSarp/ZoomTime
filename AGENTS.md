@@ -2,9 +2,9 @@
 
 Read `docs/ARCHITECTURE.md`, `docs/ITERATIVE_GUIDE.md`, and `HANDOFF.md` before changing the project.
 
-- This is a private two-person Mac application, macOS 14+, Electron/TypeScript/plain HTML/CSS.
+- This is a private two-person Mac application, Apple Silicon (arm64) only, macOS 14+, Electron/TypeScript/plain HTML/CSS. Intel/Rosetta support was retired by user revision2026-10-17; preserve historical releases/artifacts.
 - One BrowserWindow and renderer own the call across normal/mini modes.
-- No FaceTime capture, STUN, TURN, public hosting, recording, analytics, screen sharing, movie synchronization, mobile client, or unattended/background updates. User revision2026-10-16 permits explicit Check → Download → Install and restart with verification, preserved backups and normal macOS security checks.
+- No FaceTime capture, STUN, TURN, public hosting, call recording, analytics, movie synchronization, mobile client, or unattended/background updates. User revision2026-10-17 permits explicit native screen capture and local diagnostic H.264/PNG output; protected-content access requires validated pixels, with no FairPlay/security bypass. Partner screen transmission is not implemented. User revision2026-10-16 permits explicit Check → Download → Install and restart with verification, preserved backups and normal macOS security checks.
 - Do not weaken sandboxing, context isolation, TLS checks, Gatekeeper, or permission handling.
 - Never store pairing secrets as plaintext or print them in logs/URLs.
 - Preserve unrelated files and system configuration. Do not delete files without explicit approval.

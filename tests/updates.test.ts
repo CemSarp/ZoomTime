@@ -13,11 +13,14 @@ test('numeric versions never install an older GitHub build', () => {
   assert.throws(() => compareVersions('0.3.bad', '0.3.1'));
   assert.equal(selectUpdate([release('0.2.0')], '0.3.1', 'arm64').available, false);
 });
-test('latest published private prerelease is selected by version and correct Mac architecture', () => {
-  const selected = selectUpdate([release('0.9.0'), release('0.10.0'), release('9.0.0', { draft: true })], '0.3.1', 'x64');
+test('latest published private prerelease selects the Apple Silicon asset', () => {
+  const selected = selectUpdate([release('0.9.0'), release('0.10.0'), release('9.0.0', { draft: true })], '0.3.1', 'arm64');
   assert.equal(selected.available, true); assert.equal(selected.release?.version, '0.10.0');
-  assert.equal(selected.release?.name, 'ZoomTime-darwin-x64-0.10.0.zip');
+  assert.equal(selected.release?.name, 'ZoomTime-darwin-arm64-0.10.0.zip');
   assert.equal(selected.release?.prerelease, true);
+});
+test('Intel updates are deprecated even when a historical Intel asset exists', () => {
+  assert.throws(() => selectUpdate([release('0.4.0')], '0.3.4', 'x64'), /Apple Silicon/);
 });
 test('untrusted or incomplete release metadata cannot supply executable downloads', () => {
   for (const overrides of [

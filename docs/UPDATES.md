@@ -9,7 +9,7 @@ On 0.3.2/0.3.3, use Check for Updates → Download update → Show verified down
 ## Future updates from 0.3.4
 
 1. Open **ZoomTime → Check for Updates…**, or **Settings → App updates → Check for updates**.
-2. Review the newer version and prerelease label, then choose **Download update**. The app selects the matching Apple Silicon/Intel ZIP and verifies size and SHA-256 against GitHub release metadata.
+2. Review the newer version and prerelease label, then choose **Download update**. The app selects the Apple Silicon ZIP (Intel/Rosetta support is retired) and verifies size and SHA-256 against GitHub release metadata.
 3. End your call and stop any camera/microphone check. Choose **Install and restart**. No source compilation or development tools are needed.
 4. ZoomTime verifies the staged app's bundle identity, version, architecture and code signature, waits for the current app to quit, preserves it as a `ZoomTime-previous-…` backup, replaces it and requests reopening through macOS. Pairing and settings remain outside the bundle.
 5. Complete normal macOS/Keychain/media approval if requested. Use [Apple's supported per-app flow](https://support.apple.com/en-gb/102445) only for the trusted build. Never disable Gatekeeper or remove quarantine.
@@ -24,4 +24,4 @@ Checks/downloads happen only when requested and can run during a call; installat
 
 **Checksum/security metadata error:** the app refuses to offer that file. Check again and retry; report a repeated failure. Checksums come from the same HTTPS GitHub release as the archive, so trust in the publisher/GitHub remains necessary. They do not create a notarized publisher identity.
 
-For maintainers: publish numeric tags such as `v0.3.4`, with exactly `ZoomTime-darwin-arm64-0.3.4.zip` and `ZoomTime-darwin-x64-0.3.4.zip` as uploaded release assets. GitHub must provide a `sha256:` asset digest. Upload both builds before publishing the release; drafts are ignored. Prerelease flags are supported; `-beta` tag suffixes are not. The check selects the highest numeric version among the100 most recent releases. Keep prerelease status until physical acceptance evidence exists. Publishing needs a separate explicit request.
+For maintainers: publish numeric tags such as `v0.3.4`, with an uploaded Apple Silicon asset named `ZoomTime-darwin-arm64-VERSION.zip`. Intel assets from old releases are retained as history; future source rejects Intel update selection. GitHub must provide a `sha256:` asset digest. Upload the arm64 build before publishing the release; drafts are ignored. Prerelease flags are supported; `-beta` tag suffixes are not. The check selects the highest numeric version among the100 most recent releases. Keep prerelease status until physical acceptance evidence exists. Publishing needs a separate explicit request.

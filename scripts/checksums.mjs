@@ -4,13 +4,13 @@ import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-const archives = globSync(`out/make/zip/darwin/*/ZoomTime-darwin-*-${pkg.version}.zip`).sort();
-if (!archives.length) throw new Error('No archives found; run make:arm64 and/or make:x64 first');
+const archives = globSync(`out/make/zip/darwin/arm64/ZoomTime-darwin-arm64-${pkg.version}.zip`).sort();
+if (!archives.length) throw new Error('No Apple Silicon archive found; run make:arm64 first');
 const artifacts = [];
 for (const path of archives) {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(path)) hash.update(chunk);
-  const architecture = path.includes('/arm64/') ? 'arm64' : 'x64';
+  const architecture = 'arm64';
   artifacts.push({ file: basename(path), path, architecture,
     buildCommand: `npm run make:${architecture}`, sha256: hash.digest('hex') });
 }

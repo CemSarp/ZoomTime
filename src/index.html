@@ -45,7 +45,7 @@
     <p id="toast" role="status" class="small"></p>
     <details class="diagnostics"><summary>Connection details</summary><p>Session <span id="session">—</span> · Uptime <span id="elapsed">00:00</span> · Window <span id="size">900 × 600</span></p><pre id="statistics">No active media connection.</pre></details>
     <p id="preferences" class="notice" role="status" hidden>Preferences could not be saved. Check available disk space, then retry.</p>
-    <footer><span>Private by design <span aria-hidden="true">·</span> No recording</span><span class="spacer"></span><button id="open-settings" type="button" title="Settings (⌘,)">Settings</button></footer>
+    <footer><span>Private by design <span aria-hidden="true">·</span> Capture only when started</span><span class="spacer"></span><button id="open-settings" type="button" title="Settings (⌘,)">Settings</button></footer>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="settings-header"><div><p class="eyebrow">MAKE IT YOURS</p><h2 id="settings-title">Call settings</h2></div><button id="settings-close" type="button" aria-label="Close settings">Done</button></div>
@@ -77,6 +77,17 @@
       <div id="check-audio" hidden><label for="check-level" class="setting-help">Microphone level</label><meter id="check-level" min="0" max="100" value="0" aria-label="Microphone input level"></meter>
       <label class="setting-row" for="check-listen"><span><strong>Listen to my microphone</strong><small>Use headphones to prevent speaker feedback. Listening starts only when you turn this on.</small></span><input id="check-listen" type="checkbox" role="switch" disabled /></label></div>
       <p id="check-error" class="notice" role="alert" hidden></p>
+    </section>
+    <section class="settings-group" aria-labelledby="screen-title">
+      <h3 id="screen-title">Screen capture · Local diagnostic</h3>
+      <p class="setting-help">Allow checks an existing grant before requesting access. If macOS keeps asking or capture is still denied, open Screen Recording settings and authorize this copy of ZoomTime, then quit and reopen it from Applications. Start saves local H.264/PNG; nothing is sent to your partner. Closing Settings stops capture. Protected video is unsupported.</p>
+      <div class="row"><button id="screen-request" type="button">Allow screen access</button><button id="screen-settings" type="button">Screen Recording settings</button><button id="screen-refresh" type="button">Refresh sources</button></div>
+      <label class="setting-row" for="screen-kind"><span>Capture source</span><select id="screen-kind"><option value="display">Display</option><option value="window">Windows · up to four</option></select></label>
+      <label for="screen-sources" class="setting-help">Select sources (Command-click for multiple windows)</label>
+      <select id="screen-sources" aria-label="Screen capture sources"></select>
+      <div class="row"><button id="screen-start" type="button" disabled>Start local capture</button><button id="screen-stop" type="button" disabled>Stop capture</button><button id="screen-reveal" type="button" hidden>Show local output</button></div>
+      <p id="screen-status" class="setting-help" role="status" aria-live="polite">Screen capture is off.</p>
+      <details><summary>Capture performance</summary><pre id="screen-statistics"></pre></details>
     </section>
     <section class="settings-group" aria-labelledby="updates-title">
       <h3 id="updates-title">App updates</h3>

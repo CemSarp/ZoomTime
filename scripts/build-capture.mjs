@@ -1,0 +1,13 @@
+import { mkdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import { requireAppleSilicon } from '../src/platform.ts';
+const arch = process.argv[2] ?? process.arch;
+requireAppleSilicon(arch);
+const directory = resolve('out', 'native', arch);
+await mkdir(directory, { recursive: true });
+const common = ['-swift-version', '5', '-parse-as-library', '-O', '-target', 'arm64-apple-macos14.0'];
+const files = ['Pipeline.swift', 'Sources.swift', 'Probe.swift', 'Main.swift'].map(name => `native/screen-capture/${name}`);
+execFileSync('xcrun', ['swiftc', ...common, ...files, '-o', `${directory}/ZoomTimeCapture`], { stdio: 'inherit' });
+execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', `${directory}/ZoomTimeCapture`], { stdio: 'inherit' });
+console.log(`${directory}/ZoomTimeCapture`);

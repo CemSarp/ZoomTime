@@ -3,6 +3,7 @@ import type { Preferences } from './preferences.ts';
 import type { Bounds, WindowMode } from './window-state.ts';
 import type { CallingEvent, CallingState, CaptureAction } from './calling-service.ts';
 import type { ClientMessage } from './protocol.ts';
+import type { CaptureSelection, CaptureSources, ScreenCaptureState } from './screen-capture.ts';
 export interface WindowState {
   mode: WindowMode;
   bounds: Bounds;
@@ -13,6 +14,13 @@ export interface WindowState {
   alwaysOnTop: boolean;
 }
 export interface ZoomTimeBridge {
+  getScreenCaptureState(): Promise<ScreenCaptureState>;
+  openScreenCaptureSettings(): Promise<void>;
+  discoverScreenSources(requestPermission: boolean): Promise<CaptureSources>;
+  startScreenCapture(selection: CaptureSelection): Promise<void>;
+  stopScreenCapture(): Promise<void>;
+  revealScreenCapture(): Promise<void>;
+  onScreenCaptureState(callback: (state: ScreenCaptureState) => void): () => void;
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<void>;
   downloadUpdate(): Promise<void>;

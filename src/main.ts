@@ -13,6 +13,8 @@ import { readSettings, writeSettings } from './settings.ts';
 import type { WindowState } from './bridge.ts';
 import { Updates } from './updates.ts';
 import { CallingService } from './calling-service.ts';
+import { ScreenCapture } from './screen-capture.ts';
+import { requireAppleSilicon } from './platform.ts';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'zoomtime', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
@@ -36,6 +38,10 @@ app.on('window-all-closed', () => app.quit());
 app.on('activate', () => restoreWindow?.());
 
 async function createWindow(): Promise<void> {
+  try { requireAppleSilicon(process.arch); } catch {
+    dialog.showErrorBox('Apple Silicon required', 'This version requires an Apple Silicon Mac running the native arm64 app. Intel Macs and Rosetta are no longer supported.');
+    app.quit(); return;
+  }
   if (process.platform !== 'darwin' || Number(release().split('.')[0]) < 23) {
     dialog.showErrorBox('macOS 14 or newer required', 'This private prototype supports MacBooks running macOS Sonoma 14 or newer.');
     app.quit();
@@ -135,6 +141,28 @@ async function createWindow(): Promise<void> {
   const updates = new Updates(app.getVersion(), process.arch, app.getPath('downloads'), state => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('updates:state', state);
   });
+  const screenCapture = new ScreenCapture(app.isPackaged ? join(process.resourcesPath, 'ZoomTimeCapture') :
+    join(app.getAppPath(), 'out', 'native', process.arch, 'ZoomTimeCapture'), join(app.getPath('userData'), 'captures'), state => {
+    if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('screen:state', state);
+  });
+  ipcMain.handle('screen:state', event => { authorize(event); return screenCapture.state; });
+  ipcMain.handle('screen:settings', async event => {
+    authorize(event);
+    await screenCapture.openPermissionSettings(() => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'));
+  });
+  ipcMain.handle('screen:discover', async (event, request: unknown) => {
+    authorize(event);
+    if (typeof request !== 'boolean') throw new Error('Invalid permission request.');
+    if (updates.state.status === 'installing') throw new Error('Wait for the update to finish.');
+    return screenCapture.discover(request);
+  });
+  ipcMain.handle('screen:start', async (event, selection: unknown) => {
+    authorize(event);
+    if (updates.state.status === 'installing') throw new Error('Wait for the update to finish.');
+    await screenCapture.start(selection);
+  });
+  ipcMain.handle('screen:stop', async event => { authorize(event); await screenCapture.stop(); });
+  ipcMain.handle('screen:reveal', event => { authorize(event); shell.showItemInFolder(screenCapture.outputPath()); });
   const resultArgument = process.argv.indexOf('--zoomtime-update-result');
   if (resultArgument !== -1) {
     const message = await updateOutcome(process.argv[resultArgument + 1] ?? '', updateRoot);
@@ -148,7 +176,7 @@ async function createWindow(): Promise<void> {
     await updates.install(async (archive, release) => {
       const ensureIdle = () => {
         if (!app.isPackaged) throw new Error('Install updates from the packaged app in Applications.');
-        if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed) throw new Error('End your call or device check before installing. Your app was not replaced.');
+        if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed || screenCapture.inUse) throw new Error('End your call, device check or screen capture before installing. Your app was not replaced.');
       };
       ensureIdle();
       const directory = await prepareInstallation(archive, release, process.execPath, app.getVersion(), process.arch, updateRoot, homedir());
@@ -236,8 +264,8 @@ async function createWindow(): Promise<void> {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
-  window.webContents.on('did-start-loading', () => { if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed) calling.interrupt('App view reloaded. Start a new call explicitly.'); });
-  window.webContents.on('render-process-gone', () => { void calling.shutdown(); app.quit(); });
+  window.webContents.on('did-start-loading', () => { void screenCapture.stop(); if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed) calling.interrupt('App view reloaded. Start a new call explicitly.'); });
+  window.webContents.on('render-process-gone', () => { void screenCapture.stop(); void calling.shutdown(); app.quit(); });
   window.webContents.on('did-fail-load', (_event, _code, _description, _url, isMainFrame) => {
     if (isMainFrame) { dialog.showErrorBox('Window test could not load', 'Restart ZoomTime or rebuild the package.'); app.quit(); }
   });
@@ -247,9 +275,16 @@ async function createWindow(): Promise<void> {
   window.on('leave-full-screen', publish);
   window.on('move', captureBounds);
   window.on('resize', captureBounds);
-  window.on('close', () => { calling.interrupt('App closed'); void calling.shutdown(); if (!window.isFullScreen() && !window.isMaximized()) remembered[mode] = window.getBounds(); save(); });
-  app.on('before-quit', () => { void calling.shutdown(); });
-  powerMonitor.on('suspend', () => calling.interrupt('Mac went to sleep. Start a new call after waking.'));
+  window.on('close', () => { void screenCapture.stop(); calling.interrupt('App closed'); void calling.shutdown(); if (!window.isFullScreen() && !window.isMaximized()) remembered[mode] = window.getBounds(); save(); });
+  let captureQuitPending = false;
+  app.on('before-quit', event => {
+    void calling.shutdown();
+    if (screenCapture.inUse && !captureQuitPending) {
+      event.preventDefault(); captureQuitPending = true;
+      void screenCapture.stop().finally(() => app.quit());
+    }
+  });
+  powerMonitor.on('suspend', () => { void screenCapture.stop(); calling.interrupt('Mac went to sleep. Start a new call after waking.'); });
   powerMonitor.on('resume', () => calling.interrupt('Mac woke up. Start a new call when ready.'));
   window.on('closed', () => { clearTimeout(saveTimer); restoreWindow = null; });
   const recoverDisplay = () => {

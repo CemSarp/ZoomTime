@@ -2,7 +2,7 @@
 
 > Moved from the project README on 2026-10-15 so the README can stay a friendly overview. Keep technical installation, controls and troubleshooting details current here. [← Back to the README](../README.md)
 
-A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
+A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, call recording, analytics, partner screen transmission, or paid calling provider. Unpublished native screen diagnostics save local H.264/PNG only after an explicit Start; see [capture capabilities](SCREEN_CAPTURE.md).
 
 **[Version 0.3.4 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). An earlier host full-screen test passed, but the later Safari Mini failure still needs controlled verification of this release's panel candidate. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
 
@@ -16,7 +16,7 @@ Guest invitation import can continue when Tailscale CLI status is unavailable/no
 
 ## What changed in 0.3.2
 
-Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**. A newer GitHub build offers **Download update**, then **Show verified download in Finder**. End your call and quit, open the ZIP, drag ZoomTime into Applications and choose **Replace**, then reopen it. The app selects Apple Silicon/Intel automatically, verifies SHA-256 and retains macOS quarantine. Pairing/preferences stay in your profile. No background checks, automatic replacement, downgrade or extra service. Clearly labeled prereleases are included because this private project distributes candidates that way. See [updates and installation](UPDATES.md).
+Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**. A newer GitHub build offers **Download update**, then **Show verified download in Finder**. End your call and quit, open the ZIP, drag ZoomTime into Applications and choose **Replace**, then reopen it. Future builds support Apple Silicon only, verify SHA-256 and retains macOS quarantine. Pairing/preferences stay in your profile. No background checks, automatic replacement, downgrade or extra service. Clearly labeled prereleases are included because this private project distributes candidates that way. See [updates and installation](UPDATES.md).
 
 This section describes the original0.3.2 updater. The current0.3.4 prerelease adds Install and restart for future updates;0.2.0 has no updater. Older updater builds obtain0.3.4 with one guided Finder replacement. See the [release notes](releases/v0.3.2.md).
 
@@ -40,16 +40,16 @@ Open **Settings… → Camera & microphone check → Start camera & mic check** 
 Download the published0.3.4 app ZIP for your Mac:
 
 - **[Apple Silicon / arm64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)**
-- **[Intel / x64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-x64-0.3.4.zip)**
+- Intel/Rosetta support is retired for future development. Old release assets remain available in GitHub history.
 
 [All release assets and notes](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4). Download the app ZIP, not Source code.
 
 **[Simple setup: your Mac + your friend’s Mac](NETWORK_SETUP.md)** — separate Tailscale accounts, one shared network, host-only setup, then ZoomTime pairing.
 
 
-macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
+Apple Silicon (native **arm64**) and macOS 14+ are required for future builds. Intel Macs and Rosetta execution are unsupported.
 
-1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
+1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/arm64/`.
 2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/SHA256SUMS). For the new local builds, use `out/distribution/0.3.4/SHA256SUMS` instead; never compare different versions’ hashes.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
@@ -119,13 +119,12 @@ npm run lint
 npm run test:media
 npm run make:arm64
 npm run test:packaged
-npm run make:x64
 npm run checksums
 ```
 
-Build architectures sequentially because Forge shares intermediate output. `test:media` uses two isolated Chromium renderers, real authenticated WebSockets and real WebRTC with generated audio/video. It deliberately reorders ICE, interrupts signaling, checks media controls/cleanup and includes a real 60-second ring timeout. It also exercises real getUserMedia permission handling with test-only generated devices. It never acquires hardware devices; its two windows are a test fixture, not the shipped app architecture.
+Package only arm64; the Forge hook rejects other architectures before compiling the helper. `test:media` uses two isolated Chromium renderers, real authenticated WebSockets and real WebRTC with generated audio/video. It deliberately reorders ICE, interrupts signaling, checks media controls/cleanup and includes a real 60-second ring timeout. It also exercises real getUserMedia permission handling with test-only generated devices. It never acquires hardware devices; its two windows are a test fixture, not the shipped app architecture.
 
-`test:packaged` launches its own arm64 instances with isolated user data and temporary loopback debugging, checks both window sizes, renderer/video-element continuity, the narrow bridge/CSP/navigation/permissions, real safeStorage and host/reset behavior, and stops its own processes. For another native architecture use `node scripts/smoke.mjs /absolute/path/to/ZoomTime.app`. Intel execution still needs an Intel Mac. Debugging is not enabled during ordinary launch. Evidence is written under `out/verification/`.
+`test:packaged` launches its own arm64 instances with isolated user data and temporary loopback debugging, checks both window sizes, renderer/video-element continuity, the narrow bridge/CSP/navigation/permissions, real safeStorage and host/reset behavior, and stops its own processes. For a different arm64 bundle path use `node scripts/smoke.mjs /absolute/path/to/ZoomTime.app`. Intel support is retired. Debugging is not enabled during ordinary launch. Evidence is written under `out/verification/`.
 
 After committing final source and rebuilding, `checksums` writes version-specific hashes and a build manifest recording revision/dirty status, dependency pins, lockfile hash, architecture and exact build commands. Old-version archives are excluded from the new manifest. No artifacts, pairing, logs or personal configuration are committed.
 

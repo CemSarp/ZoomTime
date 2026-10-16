@@ -1,6 +1,7 @@
 import stylesheet from './index.css';
 import { decodePreferences, type Preferences, type VideoQuality } from './preferences.ts';
 import { DeviceCheck } from './device-check.ts';
+import { setupScreenCapture } from './screen-capture-ui.ts';
 import { MediaCall } from './media-call.ts';
 import type { CallingState } from './calling-service.ts';
 import type { UpdateState } from './updates.ts';
@@ -227,4 +228,5 @@ window.zoomtime.onState(applyWindow);
 window.zoomtime.onCallEvent(event => { if (event.type === 'state') applyCalling(event.state); else if (event.type === 'stop') { if (check.state.active || check.state.capturing) void check.stop(event.reason); media.stop(event.reason); } else if (event.type === 'check-stop') void check.stop(event.reason); else void media.handleSignal(event.message); });
 run(async () => { applyWindow(await window.zoomtime.getState()); applyCalling(await window.zoomtime.getCallingState()); applyUpdate(await window.zoomtime.getUpdateState()); });
 setInterval(() => { const seconds = Math.floor((Date.now() - startedAt) / 1000); element('elapsed').textContent = `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`; }, 1000);
+setupScreenCapture();
 render();

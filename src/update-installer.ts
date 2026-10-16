@@ -1,4 +1,5 @@
 import { createWriteStream } from 'node:fs';
+import { requireAppleSilicon } from './platform.ts';
 import { access, chmod, copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rename, stat, symlink, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -70,7 +71,7 @@ export async function extractApplication(archive: string, directory: string): Pr
   } finally { zip.close(); }
 }
 export async function validateApplication(app: string, version: string, arch: string): Promise<void> {
-  if (arch !== 'arm64' && arch !== 'x64') throw new Error('Unsupported Mac architecture.');
+  requireAppleSilicon(arch);
   await ownedDirectory(app);
   if (await realpath(app) !== app) throw new Error('A symbolic or translocated app cannot be updated.');
   try {
@@ -79,7 +80,7 @@ export async function validateApplication(app: string, version: string, arch: st
     if (info.CFBundleIdentifier !== BUNDLE_ID || info.CFBundleExecutable !== 'ZoomTime' || info.CFBundleShortVersionString !== version || info.LSMinimumSystemVersion !== '14.0') throw new Error('Wrong app metadata');
     const executable = join(app, 'Contents/MacOS/ZoomTime');
     if (!inside(app, await realpath(executable))) throw new Error('Escaping executable');
-    await exec('/usr/bin/lipo', ['-verify_arch', arch === 'x64' ? 'x86_64' : 'arm64', executable], { timeout: 10_000, maxBuffer: 4096 });
+    await exec('/usr/bin/lipo', ['-verify_arch', 'arm64', executable], { timeout: 10_000, maxBuffer: 4096 });
     await exec('/usr/bin/codesign', ['--verify', '--deep', '--strict', app], { timeout: 60_000, maxBuffer: 4096 });
   } catch { throw new Error('The update app failed its bundle, version, architecture or code-signature check. Your installed app was not replaced.'); }
 }

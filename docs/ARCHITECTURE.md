@@ -10,7 +10,7 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 | No FaceTime companion | Minimized window capture can pause; there is no supported incoming FaceTime stream integration in this plan. |
 | No native Swift/WebRTC client | Building/integrating the native engine adds work; the user selected Electron. |
 | TypeScript, plain HTML/CSS, maintained Forge Webpack template | Typed boundaries and maintained packaging without an unnecessary UI framework. Forge 8 calls the template `--template=webpack --typescript`. |
-| macOS 14+, separate arm64/x64 packages | Both Macs meet this floor; distribution must fit the actual processor. |
+| Apple Silicon (native arm64), macOS 14+ | User revision2026-10-17 retires Intel/Rosetta. Future builds and updates are arm64-only; historical Intel releases stay intact. |
 | One BrowserWindow, renderer, peer connection, and persistent video elements | Mini mode must not reload/reacquire/renegotiate or depend on a large hidden window. |
 | Normal 900×600; mini 320×180; minimum mini 160×90 logical pixels | The view must be substantially smaller than FaceTime and freely resizable. Fit video without stretching; do not force an aspect ratio. The normal minimum is 640×420 to keep its instruction/control area usable. |
 | Optional muted self-preview in mini mode; self-preview in normal mode | User revision2026-10-15: let each person choose to see themselves; default mini remains partner-only. Mirroring changes only the local element. A relative preview size follows both modes without duplicating media. |
@@ -103,7 +103,7 @@ Use headphones for initial tests; echo cancellation cannot guarantee removal of 
 
 ## Exclusions
 
-No group calls, chat, accounts database, recording, screen capture, analytics, movie streaming, playback synchronization, mobile apps, contact discovery, public deployment, hosted STUN/TURN, custom codecs/cryptography, or unattended/background updates. Explicit install/restart is the user-requested exception below.
+No group calls, chat, accounts database, call recording, analytics, movie streaming, playback synchronization, mobile apps, contact discovery, public deployment, hosted STUN/TURN, custom codecs/cryptography, or unattended/background updates. Explicit install/restart and local screen diagnostics are user-requested exceptions below.
 
 ## Module ownership and lifecycle reasons
 
@@ -218,3 +218,25 @@ Replacement renames the old app to a unique visible ZoomTime-previous-VERSION-UU
 Quarantine is set on the download and staged app and never removed. No Squirrel signature requirement is disabled; Electron's built-in updater is not used because ad-hoc signatures change between builds. Normal Gatekeeper and Keychain prompts can still require a local user action. LaunchServices returning success is not proof that Gatekeeper approved or the new app stayed healthy; no silent approval, automatic trust exception or guaranteed unattended restart is claimed. A per-app approval/real upgrade on both Macs remains a physical gate.
 
 Sources: [Electron automatic updater signing requirement](https://www.electronjs.org/docs/latest/api/auto-updater#macos), [yauzl ZIP reader and validation](https://github.com/thejoshwolfe/yauzl).
+
+## 2026-10-17: native screen capture scope revision
+
+The user explicitly requested ScreenCaptureKit discovery/SCStream, Metal or Core Image composition, hardware H.264 and a testable local transport. This supersedes the original screen-capture/local-recording exclusion for this feature. It does not authorize FairPlay decryption, system-security changes, FaceTime integration, publication or live tailnet changes. The existing WebRTC camera/microphone call remains unchanged. The native Swift helper is a capture worker, not a replacement native calling client.
+
+`ScreenCapture` in main owns a bundled, architecture-specific executable, permission/discovery operations, unique private output directories and lifecycle. No helper or TCC request runs on startup/Settings open. Allow preflights the existing grant before making at most one consent request per app session; Screen Recording settings opens the fixed OS pane explicitly; Refresh preflights permission and enumerates ScreenCaptureKit content. Renderer receives source descriptions and bounded status only; selection accepts one display or one to four distinct UInt32 window IDs, never paths or commands. Native code validates selection again. FaceTime windows are excluded from selection, and the display filter excludes any FaceTime application supplied by ScreenCaptureKit. No new entitlement or security setting is added.
+
+`StandardScreenCaptureSource` and `WindowCaptureSource` feed SCStream BGRA frames to one serial compositor queue. Each source retains only its latest image; queueDepth=3. Idle reuses its valid image; blank/suspended/stopped/error clears that tile and reports unavailable/protected-unknown. A disappeared source cannot stop other tiles. Source changes validate IDs before stopping old streams, reject stale callbacks by generation and retain the encoder/file. Core Image uses a Metal device, sRGB, aspect-fit tiles and a CVPixelBuffer pool capped at six allocations. Output is fixed 1280×720 at approximately 30 fps. Stream aspect fit may introduce additional letterboxing; no stretch is applied.
+
+`VideoEncoder` requires and queries VideoToolbox hardware H.264, uses realtime mode, disables frame reordering, targets 4 Mb/s and inserts keyframes at most every 60 frames. At most three submissions can be pending through encoding and transport; pressure drops and counts scheduled frames. A serial output queue keeps file I/O outside the statistics lock and drains before close. `Transport` accepts real CMSampleBuffers; `LocalFileTransport` converts AVCC NALs to Annex B including SPS/PPS at keyframes. Exclusive owner-only file creation never overwrites previous output. First complete composition also saves an owner-only PNG. Raw H.264 has no container timestamps/audio; interpret at 30 fps. There is no partner transport in this iteration.
+
+Stop/Settings close/mini/reload/crash/sleep/quit revoke capture; quit waits for drain with a five-second helper-kill fallback. Parent pipe EOF also stops the worker. Installing updates is refused while capture/discovery is in use. Private probes are not production sources. ScreenCaptureKit supplies no reliable FairPlay flag in the frame metadata used here; UI explicitly reports protected capture unsupported and protection state unknown. Black pixels are not classified as DRM. Detailed capabilities, reproduction and pending physical gates: SCREEN_CAPTURE.md.
+
+## 2026-10-17: arm64-only source branch and permission correction
+
+User requested branch `codex/screen-capture`, source push, Intel deprecation and no new builds/releases. `requireAppleSilicon` is shared by startup, update selection/staging, Forge packaging and native build/test scripts. Generic package/make commands target arm64; checksums ignore retained Intel archives. Version0.3.4, existing releases and artifacts remain unchanged. Earlier dual-architecture notes are history.
+
+The user reports granting screen permission but seeing repeated requests and denied capture. Read-only tccd logs show the current ZoomTime responsible process failing its saved code requirement for ScreenCapture, followed by “does not allow prompting; returning denied.” Earlier Codex-launched capture tests attributed responsibility to Codex, so their grants do not establish independently launched ZoomTime permission. This corrects the earlier evidence scope. Ad-hoc designated requirements can change with each build; a saved grant for another code hash does not authorize this copy. Do not weaken designated requirements, TCC or signing to preserve it.
+
+Allow now preflights permission, skips the request when already granted and does not repeatedly request after a failed attempt in the same session. It still rechecks permission on every explicit retry so a new valid grant can recover. Native denial carries a fixed `screen-permission` reason; main maps it to safe guidance instead of discarding it as a generic child-process error. The no-argument `openScreenCaptureSettings` bridge opens only `x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture` after trusted-frame authorization. The user authorizes the current copy there and quits/reopens from Applications before refreshing. Opening settings cannot grant consent itself or start capture.
+
+Only source/unit/type checks are authorized for this push; no new app/helper build or native encode/GUI test is run. These source changes require a future build and a user-launched reauthorization test before claiming OS recovery.

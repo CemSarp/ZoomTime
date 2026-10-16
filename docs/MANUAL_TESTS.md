@@ -43,3 +43,13 @@ Automated evidence is stored under `out/verification/packaged-smoke.json` and `p
 - Your actual movie workflow: pending.
 - Girlfriend's actual movie workflow: pending.
 - Overall phase 1: pending physical acceptance; phase 2 not started.
+
+## Current native-capture validation — 2026-10-17
+
+This section is separate from the historical window-probe procedure above. The user authorized local capture implementation and test outputs. On this macOS26.6.2 arm64 Mac: real ScreenCaptureKit display/two-window capture, Metal composition, hardware encoding, saved-file decode, movement/resizing, actual window closure, invalid selection recovery and display→window switching passed. Packaged Settings Refresh/Start/close stopped and drained the worker. See SCREEN_CAPTURE.md for exact evidence and scope.
+
+Still pending: deny Screen Recording in the OS, verify no stream starts, explicitly re-enable/relaunch/retry and validate pixels; switch between two physical displays then unplug the selected one; execute on macOS14 and Intel; test a controlled authorized protected playback source alongside an ordinary fixture and verify the session survives any unavailable tile. No protected-content capability is currently demonstrated. Blank pixels must not be called FairPlay detection. Never reset TCC, alter system security, or use private guessed signatures to pass a test. Existing second-Mac/network/no-TURN/long-call gates remain pending.
+
+### Permission correction / Intel retirement follow-up
+
+User reports permission enabled but repeated prompts and capture denied. Actual tccd evidence shows a saved signature mismatch for ZoomTime and denial; old Codex-launched success is not a normal-launch permission pass. Source now preflights, avoids repeating a failed request in one session and provides an explicit fixed Screen Recording settings action with current-copy/restart guidance.96 software tests and native typecheck pass. No new binary was built; verify the revised UI and reauthorization from Applications only after a separately authorized build. Intel is retired, so future physical acceptance targets Apple Silicon/macOS14+ only. Old Intel files/evidence remain historical.

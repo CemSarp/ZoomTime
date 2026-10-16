@@ -6,6 +6,7 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { requireAppleSilicon } from './platform.ts';
 
 export const RELEASES_API = 'https://api.github.com/repos/CemSarp/ZoomTime/releases?per_page=100';
 const REPOSITORY = 'https://github.com/CemSarp/ZoomTime';
@@ -34,7 +35,7 @@ export function compareVersions(a: string, b: string): number {
 export function selectUpdate(value: unknown, current: string, arch: string): { available: boolean; release?: UpdateRelease } {
   versionParts(current);
   if (!Array.isArray(value) || value.length > 100) throw new Error('GitHub returned invalid release information.');
-  if (arch !== 'arm64' && arch !== 'x64') throw new Error('No update is available for this Mac architecture.');
+  requireAppleSilicon(arch);
   const releases = value.filter(item => item && item.draft === false && typeof item.prerelease === 'boolean' && typeof item.tag_name === 'string' && /^v\d+\.\d+\.\d+$/.test(item.tag_name));
   releases.sort((a, b) => compareVersions(b.tag_name.slice(1), a.tag_name.slice(1)));
   const newest = releases[0];

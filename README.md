@@ -10,14 +10,14 @@ so two people on two Macs can watch together and still see each other.
 [![Release](https://img.shields.io/badge/release-v0.3.4_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](#-get-it)
 [![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)
-[![Intel](https://img.shields.io/badge/Intel-x64-0071c5?style=for-the-badge&logo=intel&logoColor=white)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-x64-0.3.4.zip)
+
 
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![WebRTC](https://img.shields.io/badge/WebRTC-peer--to--peer-333333?style=flat-square&logo=webrtc&logoColor=white)](https://webrtc.org/)
 [![Tailscale](https://img.shields.io/badge/Tailscale-private_network-242424?style=flat-square&logo=tailscale&logoColor=white)](https://tailscale.com/)
 [![No tracking](https://img.shields.io/badge/analytics-none-2ecc71?style=flat-square)](#-private-by-design)
-[![No recording](https://img.shields.io/badge/recording-never-2ecc71?style=flat-square)](#-private-by-design)
+[![No call recording](https://img.shields.io/badge/call_recording-none-2ecc71?style=flat-square)](#-private-by-design)
 [![Cost](https://img.shields.io/badge/cost-free-f1c40f?style=flat-square)](#-what-problem-does-it-solve)
 
 **[⬇️ Download](#-get-it) · [🚀 Set up in 4 steps](#-set-up-in-4-steps) · [🧠 How it works](#-how-it-works) · [📚 Technical guide](docs/TECHNICAL_GUIDE.md)**
@@ -26,6 +26,8 @@ so two people on two Macs can watch together and still see each other.
 
 > **v0.3.4 prerelease:** adds independent regular/Mini always-on-top settings, optional experimental speaker echo reduction, and Install and restart for future updates. Upgrading from 0.3.2/0.3.3 still uses one guided Finder replacement to obtain the new installer. See [release notes](docs/releases/v0.3.4.md).
 > **Safari overlay remains under test:** this release includes a macOS panel candidate for Mini disappearing over Safari full screen. Controlled full-screen, regular-window and focus regression checks remain pending; it is not yet a verified fix.
+> **Source branch `codex/screen-capture`:** Intel/Rosetta support is retired. The permission flow now checks existing grants and provides Screen Recording settings recovery for changed app signatures. No new binary/release is being produced for these changes.
+> **Unpublished native capture work:** Settings now includes an explicit local screen-capture diagnostic: display or up to four windows → Metal composition → hardware H.264, with a first-frame PNG. It saves locally and stops when Settings closes. Partner screen transmission and protected-video capture are unsupported. See the [capability matrix and evidence](docs/SCREEN_CAPTURE.md); the published v0.3.4 download does not contain this work.
 
 
 ---
@@ -109,7 +111,7 @@ Watching a movie "together" over a normal video call quickly becomes awkward:
 - Encrypted WebRTC audio and video
 - Pairing secret kept in the macOS **Keychain**
 - Camera/mic turn on only when you press **Call** or **Accept**
-- No recording, analytics, chat logs or call history
+- No call recording, analytics, chat logs or call history. The explicit local screen diagnostic saves H.264/PNG only after Start.
 
 </td>
 <td width="50%" valign="top">
@@ -236,9 +238,9 @@ flowchart LR
 | Your Mac (Apple menu → About This Mac) | Download |
 | --- | --- |
 | 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)** |
-| 🔷 Intel processor | **[ZoomTime for Intel (x64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-x64-0.3.4.zip)** |
+| Intel processor / Rosetta | **Deprecated.** No future builds or updates; old releases remain in GitHub history. |
 
-Needs **macOS 14 or later**. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
+New development requires **Apple Silicon (arm64), macOS 14 or later**. Existing v0.3.4 release assets are historical and remain unchanged. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
 
 > [!NOTE]
 > This is a free, private build. It isn't notarized by Apple, so macOS may ask you to approve it once. Use [Apple's per-app "Open Anyway" steps](https://support.apple.com/en-gb/102445) for the build you downloaded. Never turn Gatekeeper off.
@@ -303,11 +305,11 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> **v0.3.4 is a prerelease.** An earlier host full-screen test passed, but a later Safari Mini failure prompted this candidate; controlled regression checks remain pending. Local automated checks do not establish physical acceptance. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks, Intel hardware, and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
+> **v0.3.4 is a prerelease.** An earlier host full-screen test passed, but a later Safari Mini failure prompted this candidate; controlled regression checks remain pending. Local automated checks do not establish physical acceptance. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
 
 ### 🙅 What ZoomTime intentionally doesn't do
 
-No group calls · no chat · no screen sharing or movie streaming · no playback sync · no recording · no analytics · no mobile app · no public servers · no automatic background updates.
+No group calls · no chat · no partner screen transmission or movie streaming · no playback sync · no call recording · no analytics · no mobile app · no public servers · no automatic background updates. Local screen diagnostics are an explicit opt-in development feature.
 
 ---
 
@@ -338,6 +340,6 @@ No group calls · no chat · no screen sharing or movie streaming · no playback
 
 **Made with ♡ for long-distance movie nights.**
 
-*Private by design · No recording · Just you two.*
+*Private by design · No call recording · Just you two.*
 
 </div>
