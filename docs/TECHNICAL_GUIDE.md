@@ -18,7 +18,7 @@ Guest invitation import can continue when Tailscale CLI status is unavailable/no
 
 Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**. A newer GitHub build offers **Download update**, then **Show verified download in Finder**. End your call and quit, open the ZIP, drag ZoomTime into Applications and choose **Replace**, then reopen it. The app selects Apple Silicon/Intel automatically, verifies SHA-256 and retains macOS quarantine. Pairing/preferences stay in your profile. No background checks, automatic replacement, downgrade or extra service. Clearly labeled prereleases are included because this private project distributes candidates that way. See [updates and installation](UPDATES.md).
 
-Install the current0.3.3 build to get the feature;0.2.0 has no updater. Existing0.3.2 installations can download0.3.3 through this control. This prerelease was published at the user’s explicit request. See the [release notes](releases/v0.3.2.md).
+This section describes the original0.3.2 updater. The current0.3.4 prerelease adds Install and restart for future updates;0.2.0 has no updater. Older updater builds obtain0.3.4 with one guided Finder replacement. See the [release notes](releases/v0.3.2.md).
 
 ## What changed in 0.3.1
 

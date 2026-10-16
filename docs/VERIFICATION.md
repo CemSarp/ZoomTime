@@ -1,6 +1,17 @@
 # Verification evidence
 
-## v0.3.4 publication preparation —2026-10-16
+## v0.3.4 published prerelease —2026-10-16
+
+Explicitly requested publication complete: https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4 . Application-source commit and annotated tag: 9ea1308c70520833035d047f0ebd8fbd78016689. Both architecture packages were rebuilt from this clean source; the original build manifest records dirty=false, dependency pins and lockfile digest. Both ZIPs, portable SHA256SUMS, INSTALL.md and build-manifest.json were uploaded as a draft and all five sizes/GitHub SHA-256 digests matched local files before and after publication. Prior candidate hashes below are historical. Current archive SHA-256: arm64: 7c475d148717efd7d2f8416d823325bc5ca2a1eb2401157b3081b558571baca9; x64: b674057f47ba0fdb59fa806e9880092e9978f55409787f5233fc5c1b556fd28a.
+
+Fresh publication suite83/83 passes after the user closed their host; the initial78/83 run failed five calling-service tests because47831 was occupied. Typecheck/lint/diff/syntax checks pass. Both builds pass deep/strict signatures, CPU/version/macOS floor/privacy metadata, security fuses, minimal ASAR payload, final compiled-source equality and ZIP integrity. Runtime audit0; full audit retains8 development advisories (6high,2moderate). Evidence: out/verification/release-0.3.4-unit-final.log, artifacts-0.3.4.json, release-0.3.4-build-{arm64,x64}.log and release-0.3.4-audit.json.
+
+Anonymous in-app discovery offers0.3.4 to0.3.3 for both architectures and refuses an equal-version update. The actual old v0.3.3 updater source completed check → download → size/SHA-256/quarantine verification → Ready → reverification for the published arm64 ZIP in an isolated ignored folder. Evidence: release-0.3.4-discovery.json and update-0.3.3-to-0.3.4.json. No installed application/profile was replaced; Intel execution and actual new installer/Gatekeeper-approved restart remain untested. Earlier versions still require one Finder replacement to obtain the new installer.
+
+Publication is a prerelease, not physical acceptance. Safari panel/full-screen/regular-window/focus regression, hardware acoustics/routing, partner installation, actual two-network/no-TURN media and long movie session remain pending. No live tailnet change or invitation was sent. The full generated-media suite was not repeated for publication; its prior local evidence is retained separately.
+
+
+## Historical v0.3.4 publication preparation —2026-10-16
 
 Fresh publication rerun initially reports78/83 pass, five calling-service failures because the real ZoomTime host occupies127.0.0.1:47831. The host is left running; a request to quit when convenient is pending. Typecheck, lint and diff checks pass; runtime npm audit reports zero advisories. This does not replace the completed prior83/83 candidate evidence below or constitute a fresh full green publication check. Both architecture builds and clean-source provenance are being prepared; publication will wait for verification.
 
