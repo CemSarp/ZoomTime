@@ -7,10 +7,10 @@
 A tiny, private video-call window that floats over your full-screen movie,<br>
 so two people on two Macs can watch together and still see each other.
 
-[![Release](https://img.shields.io/badge/release-v0.3.3_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3)
+[![Release](https://img.shields.io/badge/release-v0.3.4_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](#-get-it)
-[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-arm64-0.3.3.zip)
-[![Intel](https://img.shields.io/badge/Intel-x64-0071c5?style=for-the-badge&logo=intel&logoColor=white)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-x64-0.3.3.zip)
+[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)
+[![Intel](https://img.shields.io/badge/Intel-x64-0071c5?style=for-the-badge&logo=intel&logoColor=white)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-x64-0.3.4.zip)
 
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -24,7 +24,8 @@ so two people on two Macs can watch together and still see each other.
 
 </div>
 
-> **Published v0.3.3:** fixes guest invitation import when Tailscale returns text instead of JSON. On0.3.2, use **Settings → App updates** to download the patch, then quit and replace it in Applications. See [pairing fix details](docs/TECHNICAL_GUIDE.md#guest-invitation-import-error).
+> **v0.3.4 prerelease:** adds independent regular/Mini always-on-top settings, optional experimental speaker echo reduction, and Install and restart for future updates. Upgrading from 0.3.2/0.3.3 still uses one guided Finder replacement to obtain the new installer. See [release notes](docs/releases/v0.3.4.md).
+> **Safari overlay remains under test:** this release includes a macOS panel candidate for Mini disappearing over Safari full screen. Controlled full-screen, regular-window and focus regression checks remain pending; it is not yet a verified fix.
 
 
 ---
@@ -234,10 +235,10 @@ flowchart LR
 
 | Your Mac (Apple menu → About This Mac) | Download |
 | --- | --- |
-| 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-arm64-0.3.3.zip)** |
-| 🔷 Intel processor | **[ZoomTime for Intel (x64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-x64-0.3.3.zip)** |
+| 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)** |
+| 🔷 Intel processor | **[ZoomTime for Intel (x64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-x64-0.3.4.zip)** |
 
-Needs **macOS 14 or later**. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3)
+Needs **macOS 14 or later**. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
 
 > [!NOTE]
 > This is a free, private build. It isn't notarized by Apple, so macOS may ask you to approve it once. Use [Apple's per-app "Open Anyway" steps](https://support.apple.com/en-gb/102445) for the build you downloaded. Never turn Gatekeeper off.
@@ -293,7 +294,8 @@ flowchart LR
     V2 --> V3["0.3.0 · Camera quality, mirror, one-click Host"]
     V3 --> V31["0.3.1 · Camera and mic check"]
     V31 --> V32["0.3.2 · Check for updates"]
-    V32 --> V33["0.3.3 · Guest pairing fix"]:::now
+    V32 --> V33["0.3.3 · Guest pairing fix"]
+    V33 --> V34["0.3.4 · Updates, windows and experimental audio"]:::now
     V33 --> NEXT["🧪 Real two-Mac movie-night tests"]:::next
 
     classDef now fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:2px
@@ -301,7 +303,7 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> **v0.3.3 is a prerelease.** Full-screen use passed on the host's Mac, and the automated local, security and packaging tests pass. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks, Intel hardware, and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
+> **v0.3.4 is a prerelease.** An earlier host full-screen test passed, but a later Safari Mini failure prompted this candidate; controlled regression checks remain pending. Local automated checks do not establish physical acceptance. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks, Intel hardware, and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
 
 ### 🙅 What ZoomTime intentionally doesn't do
 
@@ -319,7 +321,7 @@ No group calls · no chat · no screen sharing or movie streaming · no playback
 | 🏛️ | [Architecture and reasons](docs/ARCHITECTURE.md) | Every design decision and why it was made |
 | ✅ | [Release acceptance](docs/ACCEPTANCE.md) | Real-world tests that must pass before a full release |
 | 🧪 | [Verification](docs/VERIFICATION.md) | Automated and packaged test evidence |
-| 📝 | [Release notes v0.3.3](docs/releases/v0.3.3.md) | What's in the current prerelease |
+| 📝 | [Release notes v0.3.4](docs/releases/v0.3.4.md) | What's in the current prerelease |
 | 🤝 | [Handoff](HANDOFF.md) | Current project status for maintainers |
 
 ### 🔗 References

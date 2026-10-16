@@ -10,12 +10,14 @@ export interface WindowState {
   preferences: Preferences;
   fullScreen: boolean;
   minimized: boolean;
+  alwaysOnTop: boolean;
 }
 export interface ZoomTimeBridge {
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<void>;
   downloadUpdate(): Promise<void>;
   revealUpdate(): Promise<void>;
+  installUpdate(): Promise<void>;
   onUpdateState(callback: (state: UpdateState) => void): () => void;
   getState(): Promise<WindowState>;
   setMode(mode: WindowMode): Promise<WindowState>;

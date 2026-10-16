@@ -1,5 +1,6 @@
+import { microphoneConstraints, speakerEchoStatus, type SpeakerEchoStatus } from './audio-processing.ts';
 import { videoConstraints, type VideoQuality } from './preferences.ts';
-export interface DeviceCheckState { active: boolean; capturing: boolean; listening: boolean; level: number; error: string }
+export interface DeviceCheckState { active: boolean; speakerEcho: SpeakerEchoStatus; capturing: boolean; listening: boolean; level: number; error: string }
 interface CheckBridge { authorizeDeviceCheck(): Promise<void>; releaseDeviceCheck(): Promise<void> }
 export class DeviceCheck {
   private stream: MediaStream | null = null;
@@ -9,21 +10,23 @@ export class DeviceCheck {
   private listenRequest = 0;
   private frame = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private value: DeviceCheckState = { active: false, capturing: false, listening: false, level: 0, error: '' };
+  private value: DeviceCheckState = { active: false, speakerEcho: 'standard', capturing: false, listening: false, level: 0, error: '' };
   constructor(private bridge: CheckBridge, private video: HTMLVideoElement, private changed: (state: DeviceCheckState) => void) {}
   get state(): DeviceCheckState { return { ...this.value }; }
-  async start(quality: VideoQuality): Promise<void> {
+  async start(quality: VideoQuality, speakerEchoReduction = false): Promise<void> {
     if (this.value.active || this.value.capturing) return;
     const epoch = ++this.epoch;
-    this.value = { active: false, capturing: true, listening: false, level: 0, error: '' }; this.changed(this.state);
+    this.value = { active: false, speakerEcho: 'standard', capturing: true, listening: false, level: 0, error: '' }; this.changed(this.state);
     this.timer = setTimeout(() => { void this.stop('Device check stopped after two minutes.'); }, 120_000);
     try {
       await this.bridge.authorizeDeviceCheck(); if (epoch !== this.epoch) return;
       const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints(quality),
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        audio: microphoneConstraints(speakerEchoReduction) });
       if (epoch !== this.epoch) { stream.getTracks().forEach(track => track.stop()); return; }
       this.stream = stream;
       if (!stream.getAudioTracks().length || !stream.getVideoTracks().length) throw new Error('Missing device');
+      const speakerEcho = speakerEchoStatus(stream.getAudioTracks()[0], speakerEchoReduction);
+      this.value.speakerEcho = speakerEcho;
       for (const track of stream.getTracks()) track.onended = () => { void this.stop('A device disconnected. Start a new check to retry.'); };
       this.video.muted = true; this.video.srcObject = stream;
       const context = new AudioContext(); this.context = context;
@@ -62,7 +65,7 @@ export class DeviceCheck {
     this.stream?.getTracks().forEach(track => track.stop()); this.stream = null;
     const context = this.context; this.context = null;
     this.video.pause(); this.video.srcObject = null;
-    this.value = { active: false, capturing: false, listening: false, level: 0, error: reason }; this.changed(this.state);
+    this.value = { active: false, speakerEcho: 'standard', capturing: false, listening: false, level: 0, error: reason }; this.changed(this.state);
     if (context && context.state !== 'closed') void context.close().catch(() => {});
     await this.bridge.releaseDeviceCheck().catch(() => {});
   }

@@ -81,7 +81,7 @@ async function smoke(minimum) {
     assert.equal(await evaluate('typeof require'), 'undefined');
     assert.equal(await evaluate('typeof process'), 'undefined');
     assert.equal(await evaluate('isSecureContext'), true);
-    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'onUpdateState'].sort());
+    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'installUpdate', 'onUpdateState'].sort());
     const updater = await evaluate('window.zoomtime.getUpdateState()');
     assert.equal(updater.status, 'idle', 'No network check runs at startup');
     assert.equal(updater.currentVersion, JSON.parse(readFileSync('package.json','utf8')).version);
@@ -142,9 +142,17 @@ async function smoke(minimum) {
       await evaluate('window.zoomtime.restore()');
       assert.equal(await evaluate("navigator.permissions.query({name:'microphone'}).then(s=>s.state)"),'denied','Check cleanup revokes permission');
     }
+    assert.equal((await evaluate('window.zoomtime.getState()')).alwaysOnTop, false, 'Regular window defaults to normal level');
+    for (const normalAlwaysOnTop of [true, false]) for (const miniAlwaysOnTop of [false, true]) {
+      const next = await evaluate(`window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),normalAlwaysOnTop:${normalAlwaysOnTop},miniAlwaysOnTop:${miniAlwaysOnTop}})`);
+      assert.equal(next.alwaysOnTop, normalAlwaysOnTop, 'Current regular level applies immediately');
+      assert.equal((await evaluate("window.zoomtime.setMode('mini')")).alwaysOnTop, miniAlwaysOnTop, 'Mini uses its own saved native level');
+      assert.equal((await evaluate('window.zoomtime.restore()')).alwaysOnTop, normalAlwaysOnTop, 'Restore reapplies the regular level');
+      assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession, 'Top-level changes preserve the renderer');
+    }
     if (!minimum) await screenshot('normal.png');
-    assert.equal(await evaluate("window.zoomtime.setPreferences({mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true)"),true,'Invalid preferences must be rejected at IPC');
-    await evaluate("window.zoomtime.setPreferences({mirror:true,miniSelf:true,quality:'1080p',previewSize:35})");
+    assert.equal(await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true)"),true,'Invalid preferences must be rejected at IPC');
+    await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:true,miniSelf:true,quality:'1080p',previewSize:35})");
     await evaluate("window.__canvasForTest=document.createElement('canvas');window.__canvasForTest.width=320;window.__canvasForTest.height=180;let c=window.__canvasForTest.getContext('2d');c.fillStyle='#395986';c.fillRect(0,0,320,180);c.fillStyle='#fff';c.font='24px system-ui';c.fillText('Synthetic preview',20,90);window.__previewStream=window.__canvasForTest.captureStream(24);document.getElementById('local').srcObject=window.__previewStream;document.getElementById('self-preview').hidden=false;window.__previewForTest=document.getElementById('local');");
     assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'matrix(-1, 0, 0, 1, 0, 0)','Mirror only self-preview');
     assert.equal(await evaluate("getComputedStyle(document.getElementById('remote')).transform"),'none');
@@ -168,7 +176,7 @@ async function smoke(minimum) {
     await delay(500);
     assert.ok((await evaluate('window.zoomtime.getState()')).preferences.previewSize>35,'Dragging preview corner changes and saves its relative size in mini mode');
     await screenshot(minimum ? 'mini-self-minimum.png' : 'mini-self.png');
-    await evaluate("window.zoomtime.setPreferences({mirror:false,miniSelf:false,quality:'720p',previewSize:24})");
+    await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:false,miniSelf:false,quality:'720p',previewSize:24})");
     assert.equal(await evaluate("getComputedStyle(document.getElementById('self-preview')).display"),'none','Mini preview can be hidden');
     assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'none','Mirroring can be disabled');
 
@@ -235,6 +243,17 @@ async function smoke(minimum) {
       assert.equal(await evaluate('document.body.dataset.rendererSession'),rendererSession);
       await evaluate("document.getElementById('open-settings').click()");
       assert.equal(await evaluate("document.getElementById('settings').open"),true);
+      await evaluate("document.getElementById('speaker-echo-reduction').click()");
+      for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.speakerEchoReduction)break;await delay(50);}
+      assert.equal((await evaluate('window.zoomtime.getState()')).preferences.speakerEchoReduction,true,'Experimental echo switch persists explicit opt-in');
+      assert.equal(await evaluate("document.getElementById('local').srcObject===null&&document.getElementById('check-video').srcObject===null"),true,'Enabling echo reduction never starts capture');
+      assert.match(await evaluate("document.getElementById('speaker-echo-status').textContent"),/next call or device check/);
+      assert.equal(await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:'on'}).then(()=>false,()=>true)"),true,'Experimental preference rejects invalid IPC values');
+      await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:false})");
+      await evaluate("document.getElementById('normal-always-on-top').click()");
+      for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).alwaysOnTop)break;await delay(50);}
+      assert.equal((await evaluate('window.zoomtime.getState()')).alwaysOnTop,true,'Regular switch changes the actual native window level');
+      await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),normalAlwaysOnTop:false})");
       await evaluate("document.getElementById('mirror').click()");
       for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.mirror)break;await delay(50);}
       assert.equal((await evaluate('window.zoomtime.getState()')).preferences.mirror,true,'Settings checkbox updates persistent preference');
@@ -244,7 +263,7 @@ async function smoke(minimum) {
 
       assert.equal(await evaluate("getComputedStyle(document.getElementById('open-settings')).backgroundColor==='rgba(0, 0, 0, 0)'"),false,'Settings has a visible button surface');
       assert.equal(await evaluate("document.getElementById('check-video').srcObject===null&&document.getElementById('check-listen').disabled"),true,'Opening settings never captures or enables voice monitoring');
-      assert.equal(await evaluate("document.getElementById('update-download').hidden&&document.getElementById('update-reveal').hidden"),true,'No update is downloaded implicitly');
+      assert.equal(await evaluate("document.getElementById('update-download').hidden&&document.getElementById('update-reveal').hidden&&document.getElementById('update-install').hidden"),true,'No update is downloaded implicitly');
       await evaluate("document.getElementById('update-check').click()");
       for (let attempt=0;attempt<200;attempt++) {
         const update = await evaluate('window.zoomtime.getUpdateState()');

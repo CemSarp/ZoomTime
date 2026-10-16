@@ -7,7 +7,7 @@ const root = process.cwd();
 const startedAt=Date.now();
 const windows = new Map(), clients = new Map(), reports = new Map(), ready = new Set(), timers = new Set();
 const identityReports=new Map(),dropRequests=new Set(),pendingCaptures=new Set();let snapshot=new Map();
-const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map(),checkResults=new Map(),checkRaceResults=new Map();
+const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map(),checkResults=new Map(),checkRaceResults=new Map(),echoResults=new Map();
 const entry='zoomtime://app/main_window/index.html';
 protocol.registerSchemesAsPrivileged([{scheme:'zoomtime',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let server;
@@ -35,6 +35,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('harness:send', (event, message) => { const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0]; assert.ok(role); if(message.type==='request'&&dropRequests.delete(role))return; if(message.type in traffic[role])traffic[role][message.type]++; assert.equal(clients.get(role).send(message), true); });
   ipcMain.on('harness:result', (event, result) => {
     const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0];
+    if (result.type === 'echo-probe') echoResults.set(role,result);
     if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); if(result.type==='quality')qualityResults.set(role,result); if(result.type==='check')checkResults.set(role,result); if(result.type==='check-race')checkRaceResults.set(role,result); }
   });
   for (const role of ['host', 'guest']) {
@@ -56,6 +57,15 @@ app.whenReady().then(async () => {
   await wait(() => server.coordinator.isOnline('host') && server.coordinator.isOnline('guest'), 'Both roles authenticate');
   action('host','probe-permissions');await wait(()=>permissionResults.has('host'),'Real getUserMedia permission probe finishes');
   assert.deepEqual(permissionResults.get('host'),{type:'permission-probe',denied:true,kinds:['audio','video']});
+  action('host','probe-echo'); await wait(()=>echoResults.has('host'),'Probe bundled Chromium system-audio cancellation with fake microphone');
+  const echoProbe=echoResults.get('host');
+  assert.ok(['all','unavailable'].includes(echoProbe.status));
+  if(echoProbe.status==='all')assert.equal(echoProbe.setting,'all');
+  console.log('GENERATED_MIC_ECHO_PROBE:',JSON.stringify(echoProbe));
+  action('host','check-start-experimental'); await wait(()=>checkResults.get('host')?.state.active,'Experimental device check remains usable on unsupported generated tracks');
+  assert.equal(checkResults.get('host').state.speakerEcho,'unavailable');
+  action('host','check-stop'); await wait(()=>checkResults.get('host')?.liveTracks===0,'Experimental check releases all tracks');
+  action('host','echo-on');
   action('host','check-start'); await wait(()=>checkResults.get('host')?.state.active&&checkResults.get('host')?.state.level>0,'Local check previews camera and measures generated microphone input');
   assert.equal(checkResults.get('host').state.listening,false); assert.equal(checkResults.get('host').monitorGain,0,'Microphone monitor must start at zero volume'); assert.equal(checkResults.get('host').liveTracks,2); assert.ok(checkResults.get('host').videoHeight>0);
   assert.equal(server.coordinator.snapshot,null,'A local check must never create a call');
@@ -85,6 +95,7 @@ app.whenReady().then(async () => {
   await wait(() => [...reports.values()].filter(r => r.state?.stats?.receivedAudioPackets > 0).length === 2, 'Both partners receive actual audio packets');
   await report();
   for (const result of snapshot.values()) { assert.equal(result.peerState, 'connected'); assert.equal(result.liveTracks, 2); }
+  assert.equal(snapshot.get('host').state.speakerEcho,'unavailable','Unsupported experimental cancellation keeps the normal generated-media call working');
   const mediaStatistics=[...snapshot].map(([role,result])=>({role,stats:result.state.stats}));
   action('host','use-device-video'); await wait(()=>reports.get('host')?.state?.stats?.captureHeight===720,'Initial HD camera preference reaches real generated getUserMedia track');
   for (const [quality,width,height] of [['1080',1920,1080],['360',640,360],['720',1280,720]]) {

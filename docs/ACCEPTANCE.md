@@ -8,10 +8,12 @@ Record per run: date, tester, both Mac models/processors and macOS versions, app
 | --- | --- | --- |
 | Downloaded clean installation | Matching architecture starts without Node/Xcode; supported per-app approval | Pending |
 | Update over an installation | Pairing/settings preserved or clear Keychain recovery; no silent reset | Pending |
+| Install and restart | Verified GitHub update replaces the app, preserves pairing/settings and old backup, follows normal macOS approval and can recover | Signed fixture staging, helper readiness, real ZIP extraction and rollback tests pass; actual installed/approved restart on both Macs pending |
+| Experimental speaker echo | Off by default; applied/unavailable status matches track; compare real movie spill and speech preservation on both Macs | Generated microphone reports all mode; actual acoustic efficacy/routing pending |
 | Both actual networks | Authenticated private WSS and both directions of usable hardware audio/video | Pending |
 | Sixty-minute real call | Live media beyond 40 minutes, no meeting restart; actual mini/full-screen workflow | Pending |
 | Three-hour movie session | No app time cutoff, usable media, measured CPU/memory/bandwidth/thermals | Pending |
-| Full-screen overlay | Visible/live over each actual player, keyboard controls usable, no focus stealing | User's Mac reported pass; partner pending |
+| Full-screen overlay | Visible/live over each actual player, keyboard controls usable, no focus stealing | Later Safari Mini failure reported2026-10-16; candidate controlled Safari and partner retests pending |
 | Window controls | Reach 160×90, freely resize/move, aspect-fit; controls via hover and keyboard | Local packaged automation passes; partner pending |
 | Mode continuity | Same call/renderer/tracks through repeated mode switches | Local renderer/video and real-peer resize tests pass; actual call workflow pending |
 | Pre-call device check | Explicit local preview/meter and opt-in microphone monitoring; stopping releases devices | Generated-media/packaged checks and lease expiry pass; physical headphone routing/feedback pending |
@@ -30,3 +32,7 @@ Record per run: date, tester, both Mac models/processors and macOS versions, app
 Use Activity Monitor for whole-app/helper CPU and memory measurements and the app's Connection diagnostics for bandwidth/frame/RTT observations. Record actual numbers, not assumed budgets. A working encrypted call does not prove physical speaker echo suppression; use headphones initially.
 
 Release remains unaccepted until the actual two-Mac/two-network, downloaded-package and long-session checks are recorded. No tests on one Mac, synthetic tracks or clock-advanced coordinator tests replace them.
+
+## Explicit install-and-restart acceptance
+
+Install this updater-enabled candidate once using the previous guided flow. Future upgrades should use Check → Download → Install and restart from a writable /Applications or ~/Applications installation. Record both versions/architectures/archive digests. Verify active calls/checks block installation, staging does not start capture, the app quits before replacement, the backup remains, original app path reopens, pairing/preferences survive, normal macOS/Keychain prompts are respected, and currentVersion changes. Test tampered/truncated ZIP, offline download, insufficient permissions/disk space and deliberate launch-command failure in an isolated fixture. A Gatekeeper prompt/blocked launch may require the supported per-app approval; do not claim open's success status proves approval. Test recovery from the old backup without deleting unrelated files. Keep actual downloaded install/restart pending until observed on both Macs.

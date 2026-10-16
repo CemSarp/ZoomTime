@@ -12,11 +12,12 @@ const REPOSITORY = 'https://github.com/CemSarp/ZoomTime';
 const MAX_ARCHIVE = 512 * 1024 * 1024;
 export interface UpdateRelease { version: string; name: string; url: string; sha256: string; size: number; prerelease: boolean }
 export interface UpdateState {
-  status: 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'error';
+  status: 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'installing' | 'error';
   currentVersion: string;
   version?: string;
   prerelease?: boolean;
   percent?: number;
+  canReveal?: boolean;
   message: string;
 }
 function versionParts(value: string): number[] {
@@ -146,7 +147,7 @@ export class Updates {
   private save: typeof saveUpdate;
   constructor(current: string, arch: string, downloads: string, changed: (state: UpdateState) => void, load = fetchReleases, save = saveUpdate) {
     this.current = current; this.arch = arch; this.downloads = downloads; this.changed = changed; this.load = load; this.save = save;
-    this.state = { status: 'idle', currentVersion: current, message: 'Updates are checked only when you ask. Installation finishes in Finder.' };
+    this.state = { status: 'idle', currentVersion: current, message: 'Updates are checked only when you ask. Verified releases can install and restart ZoomTime.' };
   }
   private publish(state: Omit<UpdateState, 'currentVersion'>): void { this.state = { currentVersion: this.current, ...state }; this.changed(this.state); }
   async check(): Promise<void> {
@@ -168,18 +169,26 @@ export class Updates {
     this.publish({ ...state, status: 'downloading', percent: 0, message: 'Downloading from GitHub…' });
     try {
       this.path = await this.save(release, this.downloads, percent => this.publish({ ...state, status: 'downloading', percent, message: `Downloading… ${percent}%` }));
-      this.publish({ ...state, status: 'ready', message: 'Download verified. Show it in Finder, finish your call and quit ZoomTime. Open the ZIP, then drag ZoomTime into Applications and choose Replace. Reopen it from Applications.' });
+      this.publish({ ...state, status: 'ready', message: 'Download verified. Finish your call, then choose Install and restart. Your previous app is kept as a backup. macOS may ask you to approve this private build.' });
     } catch (error) { this.path = undefined; this.fail(error); } finally { this.busy = false; }
   }
+  async install(action: (path: string, release: UpdateRelease) => Promise<void>): Promise<void> {
+    if (this.busy || this.state.status !== 'ready' || !this.path || !this.selected) return;
+    this.busy = true;
+    this.publish({ status: 'installing', version: this.selected.version, prerelease: this.selected.prerelease, message: 'Preparing the verified update. ZoomTime will quit and reopen; your previous app will be preserved.' });
+    let verified = false;
+    try { await verifyArchive(this.path, this.selected); verified = true; await action(this.path, this.selected); }
+    catch (error) { this.fail(error, verified); this.busy = false; }
+  }
   async verifiedPath(): Promise<string> {
-    if (this.busy || this.state.status !== 'ready' || !this.path || !this.selected) throw new Error('Download and verify an update first.');
+    if (this.busy || (this.state.status !== 'ready' && !this.state.canReveal) || !this.path || !this.selected) throw new Error('Download and verify an update first.');
     this.busy = true;
     try { await verifyArchive(this.path, this.selected); return this.path; }
     catch (error) { this.path = undefined; this.fail(error); throw new Error(this.state.message); }
     finally { this.busy = false; }
   }
-  private fail(error: unknown): void {
+  private fail(error: unknown, canReveal = false): void {
     const message = error instanceof Error && !('code' in error) && error.name === 'Error' ? error.message : 'The update could not complete. Check your internet connection, free disk space and Downloads access, then check again.';
-    this.publish({ status: 'error', message });
+    this.publish({ status: 'error', message, canReveal });
   }
 }

@@ -34,6 +34,7 @@ function applyWindow(state: WindowState): void {
   if (state.mode === 'mini' && settings.open) settings.close();
   const changedQuality = preferences.quality !== state.preferences.quality;
   preferences = state.preferences;
+  media.setSpeakerEchoReduction(preferences.speakerEchoReduction);
   applyPreferences();
   if (changedQuality) void media.setQuality(preferences.quality).catch(error);
   element('size').textContent = `${state.bounds.width} × ${state.bounds.height}`; show('preferences', state.preferencesError);
@@ -41,10 +42,14 @@ function applyWindow(state: WindowState): void {
 function applyPreferences(): void {
   document.body.dataset.mirror = String(preferences.mirror);
   document.body.dataset.miniSelf = String(preferences.miniSelf);
+  element<HTMLInputElement>('normal-always-on-top').checked = preferences.normalAlwaysOnTop;
+  element<HTMLInputElement>('mini-always-on-top').checked = preferences.miniAlwaysOnTop;
+  element<HTMLInputElement>('speaker-echo-reduction').checked = preferences.speakerEchoReduction;
   element<HTMLInputElement>('mirror').checked = preferences.mirror;
   element<HTMLInputElement>('mini-self-setting').checked = preferences.miniSelf;
   element<HTMLSelectElement>('quality').value = preferences.quality;
   element<HTMLInputElement>('preview-size').value = String(preferences.previewSize);
+  renderSpeakerEcho();
   selfPreview.style.width = `${preferences.previewSize}%`;
   element('mini-self').setAttribute('aria-pressed', String(preferences.miniSelf));
   element('mini-self').setAttribute('aria-label', preferences.miniSelf ? 'Hide your camera preview' : 'Show your camera preview');
@@ -54,7 +59,7 @@ async function updatePreferences(patch: Partial<Preferences>): Promise<void> {
   clearTimeout(preferencesTimer);
   const next = { ...preferences, ...patch };
   settingsBusy = true;
-  for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self']) (element(id) as HTMLInputElement).disabled = true;
+  for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self', 'normal-always-on-top', 'mini-always-on-top', 'speaker-echo-reduction']) (element(id) as HTMLInputElement).disabled = true;
   show('settings-error', false);
   try {
     await media.setQuality(next.quality);
@@ -63,11 +68,23 @@ async function updatePreferences(patch: Partial<Preferences>): Promise<void> {
     applyPreferences(); error(cause); element('settings-error').textContent = uiError; show('settings-error', true);
   } finally {
     settingsBusy = false;
-    for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self']) (element(id) as HTMLInputElement).disabled = false;
+    for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self', 'normal-always-on-top', 'mini-always-on-top', 'speaker-echo-reduction']) (element(id) as HTMLInputElement).disabled = false;
     renderCheck();
   }
 }
+function renderSpeakerEcho(): void {
+  const status = check.state.active ? check.state.speakerEcho : media.state.speakerEcho;
+  const usingMicrophone = check.state.active || !!local.srcObject;
+  const activeStatus = {
+    all: 'System-audio cancellation applied. Acoustic results still depend on your speakers and room.',
+    unavailable: 'Unavailable on this microphone/runtime. Standard call echo cancellation continues.',
+    standard: 'Standard call echo cancellation active. Changes apply to your next microphone session.',
+  };
+  element('speaker-echo-status').textContent = usingMicrophone ? activeStatus[status] : preferences.speakerEchoReduction
+    ? 'Enabled for your next call or device check.' : 'Off. Standard call echo cancellation stays enabled.';
+}
 function renderCheck(): void {
+  renderSpeakerEcho();
   const state = check.state, busy = state.active || state.capturing;
   disabled('check-start', !!calling.call || media.state.capturing || !!local.srcObject || busy);
   show('check-start', !busy); show('check-stop', busy); show('check-video', state.active); show('check-audio', state.active);
@@ -83,10 +100,11 @@ function applyUpdate(state: UpdateState): void {
   element('update-version').textContent = `Installed version ${state.currentVersion}`;
   element('update-status').textContent = state.message;
   if (state.status === 'checking' && settings.open) element('updates-title').scrollIntoView({ block: 'start' });
-  const busy = state.status === 'checking' || state.status === 'downloading';
+  const busy = state.status === 'checking' || state.status === 'downloading' || state.status === 'installing';
   disabled('update-check', busy);
   show('update-download', state.status === 'available');
-  show('update-reveal', state.status === 'ready');
+  show('update-reveal', state.status === 'ready' || state.canReveal === true);
+  show('update-install', state.status === 'ready');
   show('update-progress', state.status === 'downloading');
   element<HTMLProgressElement>('update-progress').value = state.percent ?? 0;
 }
@@ -167,15 +185,19 @@ element('minimize-window').addEventListener('click', () => run(() => window.zoom
 element('open-settings').addEventListener('click', openSettings);
 element('update-check').addEventListener('click', () => run(() => window.zoomtime.checkForUpdates()));
 element('update-download').addEventListener('click', () => run(() => window.zoomtime.downloadUpdate()));
+element('update-install').addEventListener('click', () => run(() => window.zoomtime.installUpdate()));
 element('update-reveal').addEventListener('click', () => run(() => window.zoomtime.revealUpdate()));
 window.zoomtime.onUpdateState(applyUpdate);
 settings.addEventListener('close', () => { if (!settings.open) void check.stop(); });
 settings.addEventListener('cancel', () => { void check.stop(); });
-element('check-start').addEventListener('click', () => { void check.start(preferences.quality); });
+element('check-start').addEventListener('click', () => { void check.start(preferences.quality, preferences.speakerEchoReduction); });
 element('check-stop').addEventListener('click', () => { void check.stop(); });
 element('check-listen').addEventListener('change', () => { void check.listen(element<HTMLInputElement>('check-listen').checked); });
 element('settings-close').addEventListener('click', () => { void check.stop(); settings.close(); });
 element('mirror').addEventListener('change', () => { void updatePreferences({ mirror: element<HTMLInputElement>('mirror').checked }); });
+element('speaker-echo-reduction').addEventListener('change', () => { void updatePreferences({ speakerEchoReduction: element<HTMLInputElement>('speaker-echo-reduction').checked }); });
+element('normal-always-on-top').addEventListener('change', () => { void updatePreferences({ normalAlwaysOnTop: element<HTMLInputElement>('normal-always-on-top').checked }); });
+element('mini-always-on-top').addEventListener('change', () => { void updatePreferences({ miniAlwaysOnTop: element<HTMLInputElement>('mini-always-on-top').checked }); });
 element('mini-self-setting').addEventListener('change', () => { void updatePreferences({ miniSelf: element<HTMLInputElement>('mini-self-setting').checked }); });
 element('mini-self').addEventListener('click', () => { void updatePreferences({ miniSelf: !preferences.miniSelf }); });
 element('quality').addEventListener('change', () => { void updatePreferences({ quality: element<HTMLSelectElement>('quality').value as VideoQuality }); });

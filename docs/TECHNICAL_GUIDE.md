@@ -4,7 +4,11 @@
 
 A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
 
-**[Version 0.3.3 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+**[Version 0.3.4 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). An earlier host full-screen test passed, but the later Safari Mini failure still needs controlled verification of this release's panel candidate. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+
+## What changed in 0.3.4
+
+Independent regular/Mini always-on-top settings, optional experimental speaker echo reduction, a Safari panel candidate and user-initiated Install and restart for future releases. See [release notes](releases/v0.3.4.md) and [update instructions](UPDATES.md). Earlier updater builds need one guided Finder replacement to obtain the installer.
 
 ## What changed in 0.3.3
 
@@ -33,12 +37,12 @@ Open **Settings… → Camera & microphone check → Start camera & mic check** 
 
 ## Install
 
-Download the published0.3.3 app ZIP for your Mac:
+Download the published0.3.4 app ZIP for your Mac:
 
-- **[Apple Silicon / arm64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-arm64-0.3.3.zip)**
-- **[Intel / x64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-x64-0.3.3.zip)**
+- **[Apple Silicon / arm64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)**
+- **[Intel / x64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-x64-0.3.4.zip)**
 
-[All release assets and notes](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3). Download the app ZIP, not Source code.
+[All release assets and notes](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4). Download the app ZIP, not Source code.
 
 **[Simple setup: your Mac + your friend’s Mac](NETWORK_SETUP.md)** — separate Tailscale accounts, one shared network, host-only setup, then ZoomTime pairing.
 
@@ -46,11 +50,11 @@ Download the published0.3.3 app ZIP for your Mac:
 macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
 1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
-2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/SHA256SUMS). For the new local builds, use `out/distribution/0.3.2/SHA256SUMS` instead; never compare different versions’ hashes.
+2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/SHA256SUMS). For the new local builds, use `out/distribution/0.3.4/SHA256SUMS` instead; never compare different versions’ hashes.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
 
-The previous 0.1.0 probe archives remain available; keep them while testing replacements. Update downloads are user-triggered; replacement remains an explicit Finder step. The stable name/bundle identifier helps preserve settings; ad-hoc signing can still cause Keychain or permission prompts on updates. There is no publisher identity or hardened runtime in this free private distribution profile. Renderer sandbox/isolation, CSP, TLS verification and ASAR integrity remain enabled.
+The previous 0.1.0 probe archives remain available; keep them while testing replacements. Update downloads are user-triggered; replacement uses Install and restart in 0.3.4 or newer, with Finder as a fallback. The stable name/bundle identifier helps preserve settings; ad-hoc signing can still cause Keychain or permission prompts on updates. There is no publisher identity or hardened runtime in this free private distribution profile. Renderer sandbox/isolation, CSP, TLS verification and ASAR integrity remain enabled.
 
 ## Pair and call
 
@@ -126,3 +130,22 @@ Build architectures sequentially because Forge shares intermediate output. `test
 After committing final source and rebuilding, `checksums` writes version-specific hashes and a build manifest recording revision/dirty status, dependency pins, lockfile hash, architecture and exact build commands. Old-version archives are excluded from the new manifest. No artifacts, pairing, logs or personal configuration are committed.
 
 [Architecture and reasons](ARCHITECTURE.md) · [Network setup](NETWORK_SETUP.md) · [Release acceptance](ACCEPTANCE.md) · [Verification](VERIFICATION.md) · [Current handoff](../HANDOFF.md)
+
+## Experimental speaker echo reduction (0.3.4 prerelease)
+
+1. Open Settings and enable **Reduce speaker echo · Experimental** on each Mac that uses speakers.
+2. Start a new call, or start a local camera/microphone check. Changing the switch during a call applies on the next microphone session; it does not interrupt the current call.
+3. Read the status beneath the switch. Applied means the microphone reports system-audio cancellation mode; Unavailable means normal call echo cancellation continues. Enabled alone does not mean it has applied.
+4. With your partner, compare the same movie scene at a moderate volume with the option off/on in separate calls. Test silence, your speech over the movie, both partners speaking and changes of output device. Report leakage or distorted/missing speech. Use headphones if the result is poor.
+
+The local check meter shows microphone level, not a measurement of echo removal. Listening to your own microphone through speakers can feed back: use headphones for that particular check. macOS may request system-audio consent for the experimental mode; do not bypass a refusal. Cancellation varies with hardware, runtime, room and volume and cannot guarantee zero movie audio. The app records nothing and does not send a separate system-audio stream.
+
+## Install-and-restart updates (0.3.4 prerelease)
+
+Install this updater-enabled build once in /Applications or your own ~/Applications folder. Earlier0.3.2/0.3.3 versions still use their guided Finder replacement for that first upgrade. This is expected: a new release cannot rewrite the updater code inside an old binary.
+
+For later releases: open Settings → Check for updates, review the version/prerelease label, choose Download update, finish your call/check, then choose Install and restart. The app verifies the architecture/download/app, prepares it, quits, keeps the previous bundle beside ZoomTime as a recovery backup and opens the replacement. Nothing is compiled on your Mac. Pairing and preferences remain outside the application bundle. No update check or installation starts at app launch.
+
+If the folder is read-only or the app is running from Downloads/a ZIP/disk image/translocation, the installer refuses safely; move the app into a writable Applications folder or use the verified Finder download. No administrator/password helper is included. If macOS blocks the new unnotarized build, follow Apple's supported per-app Open Anyway procedure for the trusted build. Keychain or media permission may be requested again; never disable Gatekeeper or clear quarantine globally.
+
+Old apps are named ZoomTime-previous-VERSION-UUID.app beside the installed app. They and download jobs are retained; they consume space. If a crash/power failure interrupts the short replacement interval and ZoomTime is missing, restore the preserved previous app to ZoomTime.app in Finder. A placement/launch-command failure normally restores it automatically, but normal macOS approval and a healthy restart cannot be guaranteed by the command's return code alone. No archive, backup or profile is deleted automatically.

@@ -61,3 +61,11 @@ User approved Check → verified download → guided Finder replacement. Test nu
 ## 0.3.3 guest import correction
 
 Reproduce the raw Tailscale non-JSON status failure before changing behavior. Verify guest fallback for text/invalid object/unavailable CLI, strict redacted host rejection and unchanged stopped-session auto-connect. Keep invitation capture main-only and before asynchronous app opening, with existing validation/authentication intact. Run full unit/typecheck/lint and packaged regression checks; build both architectures. Actual guest Mac and real private WSS/media evidence remains pending. Do not publish automatically or alter the live tailnet.
+
+## 0.3.4 experimental microphone iteration
+
+User requested rebuilding current punctuation/text edits plus opt-in speaker echo reduction. Preserve existing UI edits. Verify default-off/legacy migration, strict preference IPC, next-session-only application, actual track-setting status, unsupported-mode normal-call behavior, local check and device recovery, mute and capture cleanup. Test real bundled WebRTC with generated media and rebuild both packages. Do not equate supported constraints or generated-media tests with suppression of Safari/QuickTime sound through Mac speakers. Test acoustically on both Macs before promoting the experiment; retain other physical release gates.
+
+## 0.3.4 install-and-restart iteration
+
+User revised guided-only updates to explicit in-place install/restart before publication. Reuse fixed GitHub metadata/download verification; never build from source on the recipient. Test strict archive extraction (links, traversal, bounds, duplicates), signed fixture staging, bundle/version/architecture, quarantine, private helper handoff and parent wait, call guards, backup preservation and rollback. Package both architectures, keep the renderer bridge narrow, and keep Gatekeeper/Keychain/real installed upgrade evidence pending until physically tested. Do not publish automatically or delete old bundles/jobs/profiles.

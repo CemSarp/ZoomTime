@@ -1,3 +1,4 @@
+import { microphoneConstraints, speakerEchoStatus } from '../src/audio-processing.ts';
 import { DeviceCheck } from '../src/device-check.ts';
 import { MediaCall } from '../src/media-call.ts';
 import type { CallingState } from '../src/calling-service.ts';
@@ -16,6 +17,17 @@ async function probePermissions(): Promise<void> {
     window.harness.result({type:'permission-probe',denied,kinds});
   } catch (error) { window.harness.result({type:'permission-probe',denied,error:(error as Error).name}); }
   finally { await window.harness.release(); }
+}
+async function probeSpeakerEcho(): Promise<void> {
+  let stream: MediaStream | null = null;
+  await window.harness.authorize('check');
+  try {
+    stream = await systemCapture({ audio: microphoneConstraints(true), video: false });
+    const track = stream.getAudioTracks()[0];
+    const capabilities = track.getCapabilities().echoCancellation ?? [];
+    const status = speakerEchoStatus(track, true);
+    window.harness.result({ type: 'echo-probe', status, capabilities, setting: track.getSettings().echoCancellation });
+  } finally { stream?.getTracks().forEach(t => t.stop()); await window.harness.release(); }
 }
 const captured: MediaStreamTrack[] = [];
 const freezeVideo = new Map<MediaStreamTrack, () => void>();
@@ -66,6 +78,9 @@ const deviceCheck = new DeviceCheck({ authorizeDeviceCheck: () => window.harness
 let latest: CallingState;
 window.harness.event(message => {
   if (message.type === 'action') {
+    if (message.action === 'probe-echo') void probeSpeakerEcho();
+    if (message.action === 'echo-on') call.setSpeakerEchoReduction(true);
+    if (message.action === 'check-start-experimental') void deviceCheck.start('720p', true);
     if (message.action === 'check-start') void deviceCheck.start('720p');
     if (message.action === 'check-stop') void deviceCheck.stop();
     if (message.action === 'check-listen-race') {

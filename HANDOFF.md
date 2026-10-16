@@ -1,5 +1,43 @@
 # ZoomTime handoff
 
+## v0.3.4 publication preparation —2026-10-16
+
+The user explicitly requested pushing all current changes and creating the next GitHub release. Publish v0.3.4 as a prerelease, with both architecture ZIPs, portable checksums, INSTALL and clean-source build provenance. No installed app replacement, invitation or live tailnet change is authorized by this publication. Prior candidate notes below retain their historical verification scope. Current release notes: docs/releases/v0.3.4.md. Physical Safari/installed-updater/partner/network/acoustic/long-session acceptance remains pending.
+
+## Current: explicit install and restart —2026-10-16
+
+User wants the audio approach explained and future updates to install without manual deletion/replacement. Scope revision permits Check → Download → Install and restart, not source compilation or background updates. Existing published0.3.3 cannot gain this retroactively: installing the new build once still uses the old guided flow. No publication requested in this turn.
+
+Implemented main-owned verification/staging and a no-window helper mode of the current packaged executable. Only fixed writable/owned Applications locations, no elevation, private job/profile, bounded ZIP parsing with pinned yauzl3.4.0, exact bundle/version/14.0 floor/architecture/deep-signature verification and quarantine. Helper waits for parent exit, preserves the old bundle with a unique backup name, performs checked same-parent renames, restores it if placement/open fails and uses normal LaunchServices. No raw executable launch to bypass Gatekeeper. Existing capture/call checks block installation during use and reject new capture while installing. Renderer gains only no-argument installUpdate and an Install and restart button. No profile, backup, job or archive deletion.
+
+Fresh final verification:83/83 unit tests pass after the user closed the host occupying47831; typecheck/lint/syntax/diff pass.21 focused updater tests cover real signed fixture staging/metadata/CPU/quarantine, private helper readiness and parent wait, safe extraction, backup/rollback, strict state and Finder fallback. Actual Electron ZIP extraction/signature checks pass; packaged arm64 helper rejects an invalid job without opening a normal window. Both final arm64/x64 builds/signatures/ZIP/current-bundle equality pass. Runtime audit0. Current SHA-256/source-dirty manifest is out/distribution/0.3.4; prior hashes below are historical. See docs/VERIFICATION.md for exact scope and evidence. Do not claim the actual installed app restarted or Gatekeeper approved from these tests.
+
+Known limits: two renames have a crash/power-loss interval; backup recovery may be manual. Gatekeeper can require per-app approval; Keychain prompts can recur. Open success does not prove a healthy approved restart. Backups/jobs use disk. Actual installed replacement/restart and both-Mac physical gates remain pending. Read docs/ARCHITECTURE.md for detailed trust boundaries and docs/TECHNICAL_GUIDE.md for bootstrap/recovery instructions. Preserve the user's punctuation and all earlier uncommitted0.3.4 feature work.
+
+## Latest: optional speaker echo reduction and current UI edits —2026-10-16
+
+Preserved the user's Reset Pairing/Settings label edits and existing uncommitted0.3.4 overlay/topmost work. Added default-off persistent speakerEchoReduction, accessible Experimental switch/status and shared standard microphone constraints. On explicit capture, enabled prefers echoCancellation ideal all; only actual track setting all is reported applied. Unsupported output stays usable with normal AEC and an unavailable status. No capture on toggle, live stream replacement, system-audio JS stream, screen permission bypass, new dependency or app/Chromium flag. Applies to next call/device check/reacquisition; active sessions retain their mode. Main's exact preference validator derives key count, so the seventh field is still strictly typed/validated.
+
+Fresh final verification:73/73 unit tests, typecheck/lint/syntax/diff checks pass. Real local generated-WebRTC lifecycle suite passes in135.351seconds; initial optional-mode capture reports all in bundled Chromium, unsupported generated tracks remain usable and late cleanup/mute/device recovery still pass. This proves API/lifecycle behavior, not acoustic removal. Both arm64/x64 packages build, pass signature/ZIP/architecture/permission-description/current-bundle-equality checks and contain the latest UI labels. SHA-256/build metadata (source dirty=true) are under out/distribution/0.3.4; see docs/VERIFICATION.md for current hashes. Neither package was installed or published; Intel execution, packaged GUI/Safari regressions, hardware acoustics, partner and long-session checks remain pending.
+
+Read docs/ARCHITECTURE.md for the internal cancellation-reference scope revision and docs/TECHNICAL_GUIDE.md for user/physical acoustic checks. Generated media cannot establish movie suppression. No publish or installed-app replacement was requested. Rebuild hashes below from earlier0.3.4 candidates are historical and superseded.
+
+## Latest change: independent always-on-top settings —2026-10-16
+
+User requested separate switches in Settings for regular and Mini. Preferences normalAlwaysOnTop=false/miniAlwaysOnTop=true preserve defaults and migrate old files. Main reapplies the current mode's choice at creation, transitions and validated updates. The current level changes immediately, the other mode retains its own choice, and no media session is touched. Read-only window state reports the native flag for testing. Turning off topmost does not disable panel workspace membership.
+
+Fresh full suite69/69 pass (the host port is now free), typecheck/lint/smoke-script syntax/diff checks pass. New tests cover independent booleans, invalid values/default migration and disk persistence. Packaged smoke assertions were extended for all four combinations, live native flag changes, Settings and renderer continuity, but were not run because they also manipulate full-screen Spaces while the user is using Safari. The local arm64 candidate is rebuilt; no publication, installation or Intel run. Prior0.3.4 archive hashes are superseded by this rebuild. Safari/normal full-screen and partner acceptance remain pending.
+
+## Current priority:0.3.4 Safari overlay candidate —2026-10-16
+
+User's actual Mini window disappeared over Safari full screen. They are actively using Safari and explicitly requested code investigation; do not manipulate their Safari/Netflix/call for tests. Existing full-screen claims cover ZoomTime's own transitions, not overlay composition. Local source candidate uses the same BrowserWindow with Electron type panel, plus initial always-on-top false so regular mode is not floating. An isolated panel probe appeared alongside Safari at floating3 where a normal-type probe was absent despite visibility flags; higher levels/accessory policy did not help. No native addon, second window or focus loop enters the app.
+
+Local arm64 candidate builds successfully at out/make/zip/darwin/arm64/ZoomTime-darwin-arm64-0.3.4.zip; code-signature/ZIP integrity checks pass. It is uncommitted, uninstalled and unpublished. No Intel candidate was built.
+
+Known panel tradeoff: normal mode follows all Spaces even though it is not floating. Native full-screen, Dock, keyboard/focus and persistent-renderer regressions must be tested in the packaged candidate before calling this fixed. Hidden native setting checks are not sufficient; controlled Safari tests remain pending. See docs/VERIFICATION.md for evidence paths and limits. An exploratory modern AppKit flag probe was inconclusive and is ignored, not shipped.
+
+Fresh unit run63/68 pass; five calling-service tests failed because the user's host PID76487 occupied47831. Do not kill the host or claim a green suite. Typecheck/lint/diff pass.0.3.4 is an unreleased local candidate; no tag/push/publication/install was requested for this bug. Preserve the published0.3.3 archives and actual user profile. Physical overlay acceptance is failed/pending correction, not passed from earlier local smoke results.
+
 Updated 2026-10-16. Version **0.3.3** is the published GitHub prerelease with the guest-import patch. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
 
 ## 2026-10-16 v0.3.3 publication and updater check

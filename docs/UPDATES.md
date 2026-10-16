@@ -1,15 +1,22 @@
 # Update ZoomTime
 
-Install the matching ZIP from [GitHub v0.3.3](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3) once to get these controls. If already on0.3.2, Check for Updates downloads0.3.3 directly. Version0.2.0 has no updater. Future local builds become available only after an explicit publication.
+The current prerelease is [v0.3.4](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4). Download the app ZIP for your Mac, not GitHub's source archive.
 
-1. Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**.
-2. If a newer build is published, review its version and **prerelease** label. Press **Download update**. The right Apple Silicon/Intel ZIP is selected for the running app. A prerelease is a test candidate; the two-Mac/long-session checks still apply.
-3. Wait for **Download verified**. The app checks the ZIP's size and SHA-256 against GitHub's metadata. A failed check never offers installation.
-4. Choose **Show verified download in Finder**. Your ZIP is in a separate `ZoomTime-update-…` folder inside Downloads.
-5. End your call and **Quit ZoomTime (⌘Q)**. Double-click the ZIP to extract it. Drag the extracted **ZoomTime.app** into **Applications**, and choose **Replace**. Keep the previous trusted ZIP in case you need to reinstall it.
-6. Open ZoomTime from Applications. Pairing and settings stay on this Mac. Updates may prompt for Keychain/camera/microphone or [Apple's per-app approval](https://support.apple.com/en-gb/102445). Approve only the trusted build. Never disable Gatekeeper or remove quarantine to make it open.
+## First upgrade to the new installer
 
-The download does not replace or restart your running app. A check can run during a call; quit only when you are ready to finish installation. No checks/downloads happen at startup. Installation needs no Node, Xcode, GitHub account/token, new calling service or payment. Nothing changes in Tailscale.
+On 0.3.2/0.3.3, use Check for Updates → Download update → Show verified download in Finder. End your call, quit ZoomTime, extract the ZIP and drag ZoomTime.app into Applications, choosing Replace. No manual deletion or pairing reset is required. Version 0.2.0 needs a direct download. Earlier local 0.3.4 previews must also install this release manually because equal-version updates are not offered.
+
+## Future updates from 0.3.4
+
+1. Open **ZoomTime → Check for Updates…**, or **Settings → App updates → Check for updates**.
+2. Review the newer version and prerelease label, then choose **Download update**. The app selects the matching Apple Silicon/Intel ZIP and verifies size and SHA-256 against GitHub release metadata.
+3. End your call and stop any camera/microphone check. Choose **Install and restart**. No source compilation or development tools are needed.
+4. ZoomTime verifies the staged app's bundle identity, version, architecture and code signature, waits for the current app to quit, preserves it as a `ZoomTime-previous-…` backup, replaces it and requests reopening through macOS. Pairing and settings remain outside the bundle.
+5. Complete normal macOS/Keychain/media approval if requested. Use [Apple's supported per-app flow](https://support.apple.com/en-gb/102445) only for the trusted build. Never disable Gatekeeper or remove quarantine.
+
+Install ZoomTime in `/Applications` or your own `~/Applications`. The app must be owned by you and its containing folder writable. No administrator helper is installed. If installation cannot proceed, use **Show verified download in Finder** and finish replacement after quitting. Actual installed-app replacement/restart and Gatekeeper approval remain pending acceptance tests for this prerelease.
+
+Checks/downloads happen only when requested and can run during a call; installation waits until idle. Nothing changes in Tailscale. The old app, download and staging files are retained and consume disk space. If placement or reopening fails, the helper attempts to restore the previous app. A crash/power loss between the two renames can require manually restoring the retained backup in Finder; a successful macOS open request does not guarantee a healthy approved launch.
 
 **No newer published build:** your installed version is equal to or ahead of GitHub. The updater never downgrades it. Local builds become available to your partner only after the publisher uploads a newer release.
 

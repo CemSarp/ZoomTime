@@ -24,5 +24,5 @@ writeFileSync(`${directory}/build-manifest.json`, JSON.stringify({ app: pkg.prod
   builtAt: new Date().toISOString(), source: { commit, dirty }, node: process.version,
   macOS: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(),
   dependencies: { ...pkg.dependencies, ...pkg.devDependencies }, lockfileSha256: createHash('sha256').update(readFileSync('package-lock.json')).digest('hex'),
-  artifacts, gate: 'Calling release candidate. Local integration verified; partner Mac, actual two-network and long-call acceptance pending.' }, null, 2) + '\n');
+  artifacts, gate: 'Local software checks only; actual install/restart, full-screen, partner Mac, two-network and long-call acceptance pending.' }, null, 2) + '\n');
 console.log(`Recorded SHA-256 and build metadata for ${artifacts.length} archive(s). Source ${dirty ? 'has uncommitted changes' : 'is clean'}.`);

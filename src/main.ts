@@ -5,7 +5,8 @@ import { promisify } from 'node:util';
 import { connectTailscale, setupTailscaleHost } from './tailscale.ts';
 import { decodePreferences } from './preferences.ts';
 import { join } from 'node:path';
-import { release } from 'node:os';
+import { release, homedir } from 'node:os';
+import { prepareInstallation, runUpdateHelper, startUpdateHelper, updateOutcome } from './update-installer.ts';
 import { clampBounds, defaultBounds, leaveFullScreen, changeFullScreen, type WindowMode } from './window-state.ts';
 import { assetPath, CONTENT_SECURITY_POLICY, CALL_PERMISSIONS_POLICY, allowCallMedia, isTrustedIpc, isWindowMode } from './security.ts';
 import { readSettings, writeSettings } from './settings.ts';
@@ -15,8 +16,15 @@ import { CallingService } from './calling-service.ts';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'zoomtime', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
+const updateRoot = join(app.getPath('appData'), 'ZoomTime-update-jobs');
+const helperArgument = process.argv.indexOf('--zoomtime-update-helper');
 let restoreWindow: (() => void) | null = null;
-if (!app.requestSingleInstanceLock()) app.quit();
+if (helperArgument !== -1) {
+  app.whenReady().then(async () => {
+    app.setActivationPolicy('prohibited');
+    await runUpdateHelper(process.argv[helperArgument + 1] ?? '', process.execPath, process.arch, updateRoot, homedir());
+  }).then(() => app.exit(0), () => app.exit(1));
+} else if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => restoreWindow?.());
   app.whenReady().then(createWindow).catch(() => {
@@ -57,14 +65,17 @@ async function createWindow(): Promise<void> {
   const areas = () => [screen.getPrimaryDisplay(), ...screen.getAllDisplays().filter(d => d.id !== screen.getPrimaryDisplay().id)].map(d => d.workArea);
   const bounds = clampBounds(remembered.normal ?? defaultBounds('normal', screen.getPrimaryDisplay().workArea), areas(), 'normal');
   const window = new BrowserWindow({ ...bounds, minWidth: 640, minHeight: 420, show: false,
-    title: 'ZoomTime', titleBarStyle: 'hiddenInset', backgroundColor: '#17191e',
+    // A macOS panel can join another app's full-screen Space without activating it.
+    type: 'panel', title: 'ZoomTime', titleBarStyle: 'hiddenInset', backgroundColor: '#17191e',
     fullscreenable: true, autoHideMenuBar: true,
     webPreferences: { preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY, nodeIntegration: false,
       contextIsolation: true, sandbox: true, webSecurity: true, webviewTag: false,
       backgroundThrottling: false, devTools: !app.isPackaged },
   });
+  const applyAlwaysOnTop = () => window.setAlwaysOnTop(mode === 'mini' ? preferences.miniAlwaysOnTop : preferences.normalAlwaysOnTop, 'floating');
+  applyAlwaysOnTop();
   remembered.normal ??= bounds;
-  const state = (): WindowState => ({ mode, bounds: window.getBounds(), preferencesError, preferences, fullScreen: window.isFullScreen(), minimized: window.isMinimized() });
+  const state = (): WindowState => ({ mode, bounds: window.getBounds(), preferencesError, preferences, fullScreen: window.isFullScreen(), minimized: window.isMinimized(), alwaysOnTop: window.isAlwaysOnTop() });
   const publish = () => { if (!window.isDestroyed()) window.webContents.send('window:state', state()); };
   const save = () => {
     clearTimeout(saveTimer);
@@ -92,7 +103,7 @@ async function createWindow(): Promise<void> {
       window.setWindowButtonVisibility(mode === 'normal');
       window.setFullScreenable(mode === 'normal');
       window.setBounds(clampBounds(remembered[mode] ?? defaultBounds(mode, currentDisplay.workArea), areas(), mode));
-      window.setAlwaysOnTop(mode === 'mini', 'floating');
+      applyAlwaysOnTop();
       window.setVisibleOnAllWorkspaces(mode === 'mini', { visibleOnFullScreen: mode === 'mini' });
       remembered[mode] = window.getBounds();
       save();
@@ -124,9 +135,28 @@ async function createWindow(): Promise<void> {
   const updates = new Updates(app.getVersion(), process.arch, app.getPath('downloads'), state => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('updates:state', state);
   });
+  const resultArgument = process.argv.indexOf('--zoomtime-update-result');
+  if (resultArgument !== -1) {
+    const message = await updateOutcome(process.argv[resultArgument + 1] ?? '', updateRoot);
+    if (message) updates.state = { ...updates.state, message };
+  }
   ipcMain.handle('updates:state', event => { authorize(event); return updates.state; });
   ipcMain.handle('updates:check', async event => { authorize(event); await updates.check(); });
   ipcMain.handle('updates:download', async event => { authorize(event); await updates.download(); });
+  ipcMain.handle('updates:install', async event => {
+    authorize(event);
+    await updates.install(async (archive, release) => {
+      const ensureIdle = () => {
+        if (!app.isPackaged) throw new Error('Install updates from the packaged app in Applications.');
+        if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed) throw new Error('End your call or device check before installing. Your app was not replaced.');
+      };
+      ensureIdle();
+      const directory = await prepareInstallation(archive, release, process.execPath, app.getVersion(), process.arch, updateRoot, homedir());
+      ensureIdle();
+      const cancel = await startUpdateHelper(directory, process.execPath);
+      try { ensureIdle(); app.quit(); } catch (error) { cancel(); throw error; }
+    });
+  });
   ipcMain.handle('updates:reveal', async event => { authorize(event); shell.showItemInFolder(await updates.verifiedPath()); });
   const exec = promisify(execFile);
   let setupPending = false;
@@ -157,8 +187,8 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('preferences:set', (event, value: unknown) => {
     authorize(event);
     const decoded = decodePreferences(value);
-    if (!value || typeof value !== 'object' || Object.keys(value).length !== 4 || Object.entries(decoded).some(([key, item]) => (value as Record<string, unknown>)[key] !== item)) throw new Error('Invalid camera preferences.');
-    preferences = decoded; save(); publish(); return state();
+    if (!value || typeof value !== 'object' || Object.keys(value).length !== Object.keys(decoded).length || Object.entries(decoded).some(([key, item]) => (value as Record<string, unknown>)[key] !== item)) throw new Error('Invalid preferences.');
+    preferences = decoded; applyAlwaysOnTop(); save(); publish(); return state();
   });
   ipcMain.handle('call:state', event => { authorize(event); return calling.state; });
   ipcMain.handle('pairing:host', async (event, endpoint: unknown) => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.createHost(endpoint); });
@@ -166,9 +196,9 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('pairing:import', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); const invitation = await clipboard.readText(); await openAndConnectTailscale(false); await calling.importInvitation(invitation); });
   ipcMain.handle('pairing:reset', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.reset(); });
   ipcMain.handle('call:retry', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.retry(); });
-  ipcMain.handle('check:authorize', event => { authorize(event); calling.authorizeDeviceCheck(); });
+  ipcMain.handle('check:authorize', event => { authorize(event); if (updates.state.status === 'installing') throw new Error('Wait for the update to finish.'); calling.authorizeDeviceCheck(); });
   ipcMain.handle('check:release', event => { authorize(event); calling.releaseDeviceCheck(); });
-  ipcMain.handle('call:authorize', (event, action: unknown) => { authorize(event); calling.authorizeCapture(action); });
+  ipcMain.handle('call:authorize', (event, action: unknown) => { authorize(event); if (updates.state.status === 'installing') throw new Error('Wait for the update to finish.'); calling.authorizeCapture(action); });
   ipcMain.handle('call:release', event => { authorize(event); calling.releaseCapture(); });
   ipcMain.handle('call:send', (event, value: unknown) => { authorize(event); calling.send(value); });
   ipcMain.handle('window:getState', event => { authorize(event); return state(); });

@@ -8,6 +8,7 @@ const bridge: ZoomTimeBridge = {
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   downloadUpdate: () => ipcRenderer.invoke('updates:download'),
   revealUpdate: () => ipcRenderer.invoke('updates:reveal'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
   onUpdateState: callback => {
     const handler = (_event: Electron.IpcRendererEvent, state: UpdateState) => callback(state);
     ipcRenderer.on('updates:state', handler);

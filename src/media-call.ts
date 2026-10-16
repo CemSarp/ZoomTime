@@ -1,7 +1,8 @@
+import { microphoneConstraints, speakerEchoStatus, type SpeakerEchoStatus } from './audio-processing.ts';
 import { videoConstraints, type VideoQuality } from './preferences.ts';
 import type { CallingState, CaptureAction } from './calling-service.ts';
 import type { ClientMessage, ServerMessage } from './protocol.ts';
-export interface MediaState { capturing: boolean; muted: boolean; cameraOn: boolean; error: string | null; audioOnlyOffered: boolean; connection: string; stale: boolean; stats: Record<string, string | number> }
+export interface MediaState { capturing: boolean; speakerEcho: SpeakerEchoStatus; muted: boolean; cameraOn: boolean; error: string | null; audioOnlyOffered: boolean; connection: string; stale: boolean; stats: Record<string, string | number> }
 export interface MediaBridge { authorizeCapture(action: CaptureAction): Promise<void>; releaseCapture(): Promise<void>; sendSignal(message: ClientMessage): Promise<void> }
 export interface MediaView { local: HTMLVideoElement; remote: HTMLVideoElement; changed(state: MediaState): void }
 export class MediaCall {
@@ -10,6 +11,8 @@ export class MediaCall {
   private latest: CallingState | null = null;
   private stream: MediaStream | null = null;
   private wantedCamera = false;
+  private speakerEchoReduction = false;
+  setSpeakerEchoReduction(enabled: boolean): void { this.speakerEchoReduction = enabled; }
   private quality: VideoQuality = '720p';
   private qualityBusy = false;
   private peer: RTCPeerConnection | null = null;
@@ -29,7 +32,7 @@ export class MediaCall {
   private statsTimer: ReturnType<typeof setInterval> | undefined;
   private recoveryRequested = false;
   private lastStats = { at: 0, sent: 0, received: 0, frames: 0, frameAt: 0 };
-  private value: MediaState = { capturing: false, muted: false, cameraOn: false, error: null, audioOnlyOffered: false, connection: 'idle', stale: false, stats: {} };
+  private value: MediaState = { capturing: false, speakerEcho: 'standard', muted: false, cameraOn: false, error: null, audioOnlyOffered: false, connection: 'idle', stale: false, stats: {} };
   constructor(bridge: MediaBridge, view: MediaView) {
     this.bridge = bridge; this.view = view;
     navigator.mediaDevices.addEventListener('devicechange', () => this.checkDevices());
@@ -66,8 +69,8 @@ export class MediaCall {
     }
     this.changed();
   }
-  private constraints(camera: boolean): MediaStreamConstraints {
-    return { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  private constraints(camera: boolean, speakerEchoReduction = this.speakerEchoReduction): MediaStreamConstraints {
+    return { audio: microphoneConstraints(speakerEchoReduction),
       video: camera ? videoConstraints(this.quality) : false };
   }
   async setQuality(quality: VideoQuality): Promise<void> {
@@ -86,17 +89,19 @@ export class MediaCall {
   }
   async start(action: 'call' | 'accept', audioOnly = false): Promise<void> {
     if (this.value.capturing || this.stream) return;
-    const epoch = ++this.epoch;
+    const epoch = ++this.epoch, speakerEchoReduction = this.speakerEchoReduction;
     let stage: 'authorize' | 'capture' | 'signal' = 'authorize';
     this.value = { ...this.value, capturing: true, error: null, audioOnlyOffered: false, connection: 'requesting devices' }; this.changed();
     this.captureTimer = setTimeout(() => { if (this.valid(epoch)) this.stop('Device permission request timed out. Retry explicitly.'); }, 60_000);
     try {
       await this.bridge.authorizeCapture(action); if (!this.valid(epoch)) return;
       stage = 'capture';
-      const stream = await navigator.mediaDevices.getUserMedia(this.constraints(!audioOnly));
+      const stream = await navigator.mediaDevices.getUserMedia(this.constraints(!audioOnly, speakerEchoReduction));
       if (!this.valid(epoch)) { stream.getTracks().forEach(t => t.stop()); return; }
       if (!stream.getAudioTracks().length) { stream.getTracks().forEach(t => t.stop()); throw new Error('No microphone'); }
-      this.stream = stream; this.value.cameraOn = stream.getVideoTracks().length > 0; this.wantedCamera = this.value.cameraOn; this.value.muted = false;
+      this.stream = stream;
+      const speakerEcho = speakerEchoStatus(stream.getAudioTracks()[0], speakerEchoReduction);
+      this.value.speakerEcho = speakerEcho; this.value.cameraOn = stream.getVideoTracks().length > 0; this.wantedCamera = this.value.cameraOn; this.value.muted = false;
       this.attachPreview(); this.value.capturing = false; this.value.connection = 'ringing';
       const call = this.latest?.call;
       stage = 'signal';
@@ -261,17 +266,19 @@ export class MediaCall {
   }
   async retryDevices(): Promise<void> {
     if (!this.stream || this.value.capturing) return;
-    const epoch = this.epoch; this.value.capturing = true; this.changed(); let acquired: MediaStream | null = null;
+    const epoch = this.epoch, speakerEchoReduction = this.speakerEchoReduction; this.value.capturing = true; this.changed(); let acquired: MediaStream | null = null;
     try {
       await this.bridge.authorizeCapture('devices'); if (!this.valid(epoch)) return;
-      acquired = await navigator.mediaDevices.getUserMedia(this.constraints(this.wantedCamera)); if (!this.valid(epoch)) return;
+      acquired = await navigator.mediaDevices.getUserMedia(this.constraints(this.wantedCamera, speakerEchoReduction)); if (!this.valid(epoch)) return;
+      const microphone = acquired.getAudioTracks()[0]; if (!microphone) throw new Error('No microphone');
+      const speakerEcho = speakerEchoStatus(microphone, speakerEchoReduction);
       // Preserve mute before any new microphone track can reach an active sender.
       for (const track of acquired.getAudioTracks()) track.enabled = !this.value.muted;
       for (const kind of ['audio', 'video']) {
         const sender = this.peer?.getTransceivers().find(t => t.receiver.track.kind === kind)?.sender;
         await sender?.replaceTrack(acquired.getTracks().find(t => t.kind === kind) ?? null); if (!this.valid(epoch)) return;
       }
-      const old = this.stream; this.stream = acquired; acquired = null; old.getTracks().forEach(t => t.stop());
+      const old = this.stream; this.value.speakerEcho = speakerEcho; this.stream = acquired; acquired = null; old.getTracks().forEach(t => t.stop());
       for (const track of this.stream.getAudioTracks()) track.enabled = !this.value.muted;
       this.value.cameraOn = this.stream.getVideoTracks().length > 0; this.value.error = null; this.attachPreview(); this.mediaStatus();
     } catch { if (this.valid(epoch)) this.value.error = 'Default devices could not be recovered. Check macOS settings and retry, or end this call.'; }
@@ -330,7 +337,7 @@ export class MediaCall {
     this.peer?.close(); this.peer = null; this.stream?.getTracks().forEach(t => t.stop()); this.stream = null; this.wantedCamera = false;
     this.view.local.srcObject = null; this.view.remote.srcObject = null; this.view.remote.pause();
     this.offered = 0; this.remoteGeneration = 0; this.localGeneration = 0; this.earlyIce = []; this.localIce = []; this.localUfrags.clear(); this.queue = Promise.resolve();
-    this.value = { capturing: false, muted: false, cameraOn: false, error: reason || null, audioOnlyOffered: false, connection: 'ended', stale: false, stats: {} };
+    this.value = { capturing: false, speakerEcho: 'standard', muted: false, cameraOn: false, error: reason || null, audioOnlyOffered: false, connection: 'ended', stale: false, stats: {} };
     void this.bridge.releaseCapture(); this.changed();
   }
 }

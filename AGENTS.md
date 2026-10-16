@@ -4,7 +4,7 @@ Read `docs/ARCHITECTURE.md`, `docs/ITERATIVE_GUIDE.md`, and `HANDOFF.md` before 
 
 - This is a private two-person Mac application, macOS 14+, Electron/TypeScript/plain HTML/CSS.
 - One BrowserWindow and renderer own the call across normal/mini modes.
-- No FaceTime capture, STUN, TURN, public hosting, recording, analytics, screen sharing, movie synchronization, mobile client, or automatic updates.
+- No FaceTime capture, STUN, TURN, public hosting, recording, analytics, screen sharing, movie synchronization, mobile client, or unattended/background updates. User revision2026-10-16 permits explicit Check → Download → Install and restart with verification, preserved backups and normal macOS security checks.
 - Do not weaken sandboxing, context isolation, TLS checks, Gatekeeper, or permission handling.
 - Never store pairing secrets as plaintext or print them in logs/URLs.
 - Preserve unrelated files and system configuration. Do not delete files without explicit approval.

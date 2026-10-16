@@ -15,6 +15,7 @@ const config: ForgeConfig = {
     appCategoryType: 'public.app-category.social-networking',
     appCopyright: 'Private ZoomTime prototype',
     extendInfo: { LSMinimumSystemVersion: '14.0',
+      NSAudioCaptureUsageDescription: 'ZoomTime uses Mac playback as a reference for optional speaker echo reduction during a call or device check. Playback is not recorded or sent.',
       NSCameraUsageDescription: 'ZoomTime uses your camera when you start or accept a private call, or explicitly start a local camera and microphone check.',
       NSMicrophoneUsageDescription: 'ZoomTime uses your microphone when you start or accept a private call, or explicitly start a local camera and microphone check.' },
     osxSign: {

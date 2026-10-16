@@ -129,3 +129,23 @@ test('untrusted redirects, excess data, truncated downloads and bad hashes are n
     t.mock.restoreAll();
   }
 });
+
+test('installation is explicit, rechecks bytes and excludes concurrent update operations', async () => {
+  const data=Buffer.from('verified fixture'), selected=fixture(data), directory=await mkdtemp(join(tmpdir(),'zoomtime-install-state-')), path=join(directory,'fixture.zip');await writeFile(path,data);
+  const metadata=[{...release('0.4.0'),assets:[{...asset('0.4.0'),size:data.length,digest:'sha256:'+selected.sha256}]}];
+  const updates=new Updates('0.3.1','arm64',directory,()=>{},async()=>metadata,async()=>path);
+  let calls=0,finish!:()=>void;
+  const install=async(file:string, value:UpdateRelease)=>{assert.equal(file,path);assert.equal(value.sha256,selected.sha256);calls++;await new Promise<void>(resolve=>{finish=resolve;});};
+  await updates.install(install);assert.equal(calls,0);
+  await updates.check();await updates.download();const installing=updates.install(install);
+  while(!calls)await new Promise(r=>setTimeout(r,1));
+  await updates.check();await updates.download();await updates.install(install);assert.equal(calls,1);assert.equal(updates.state.status,'installing');finish();await installing;
+  const changed=new Updates('0.3.1','arm64',directory,()=>{},async()=>metadata,async()=>path);await changed.check();await changed.download();await writeFile(path,Buffer.alloc(data.length));await changed.install(install);assert.equal(calls,1);assert.equal(changed.state.status,'error');
+});
+
+test('a failed installation offers the verified Finder fallback without bypassing revalidation',async()=>{
+ const data=Buffer.from('fixture'),selected=fixture(data),directory=await mkdtemp(join(tmpdir(),'zoomtime-fallback-')),path=join(directory,'release.zip');await writeFile(path,data);
+ const updates=new Updates('0.3.1','arm64',directory,()=>{},async()=>[{...release('0.4.0'),assets:[{...asset('0.4.0'),size:data.length,digest:'sha256:'+selected.sha256}]}],async()=>path);
+ await updates.check();await updates.download();await updates.install(async()=>{throw new Error('Folder not writable');});assert.equal(updates.state.status,'error');assert.equal(updates.state.canReveal,true);assert.equal(await updates.verifiedPath(),path);
+ await writeFile(path,Buffer.alloc(data.length));await assert.rejects(updates.verifiedPath());assert.equal(updates.state.canReveal,false);
+});
