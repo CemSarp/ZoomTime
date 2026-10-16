@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { approvedEndpoint } from './protocol.ts';
 type Command = (args: string[]) => Promise<string>;
 const proxy = 'http://127.0.0.1:47831';
@@ -43,4 +44,21 @@ export async function setupTailscaleHost(command: Command): Promise<string> {
     if (!inspect(parse(await command(['serve', 'status', '--json'])), key)) throw new Error('Tailscale did not confirm the private endpoint. Open Tailscale and retry.');
   }
   return endpoint;
+}
+
+export async function connectTailscale(command: Command, requireCli = true): Promise<void> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let status: Record<string, unknown>;
+    try {
+      status = parse(await command(['status', '--json']));
+      if (status.BackendState === 'Running' && object(status.Self ?? {}).Online === true) return;
+    } catch {
+      // Guests need the private WSS connection, not a working CLI. Hosting still requires it.
+      if (!requireCli) return;
+      throw new Error('Tailscale command-line status is unavailable. Open Tailscale, connect and retry. For automatic hosting, use the standalone Tailscale Mac app.');
+    }
+    if (status.BackendState === 'Stopped') { await command(['up', '--timeout=15s']); continue; }
+    await delay(500);
+  }
+  throw new Error('Finish signing in or approving the VPN in Tailscale, then retry here.');
 }

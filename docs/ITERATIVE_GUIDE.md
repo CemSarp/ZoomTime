@@ -56,3 +56,8 @@ User revised capture scope to allow an explicit local camera/microphone check be
 ## 0.3.2 explicit GitHub update iteration
 
 User approved Check → verified download → guided Finder replacement. Test numeric versions/no downgrade, architecture selection, flagged prereleases, exact publisher URLs, invalid metadata, TLS/redirect boundary, digest/size failure, retry, serialized operations, no startup network/download and no raw URL/path bridge. Exercise the real GitHub API and an isolated real older-release download without installing/downgrading. Verify macOS quarantine is added and retained. Packaged UI must show installed version and explicit check results without loosening renderer networking. Rebuild both architectures, preserve old artifacts, and record source/checksums. Do not publish automatically; actual downloaded replacement, trust/Keychain behavior and partner-Mac execution remain pending.
+
+
+## 0.3.3 guest import correction
+
+Reproduce the raw Tailscale non-JSON status failure before changing behavior. Verify guest fallback for text/invalid object/unavailable CLI, strict redacted host rejection and unchanged stopped-session auto-connect. Keep invitation capture main-only and before asynchronous app opening, with existing validation/authentication intact. Run full unit/typecheck/lint and packaged regression checks; build both architectures. Actual guest Mac and real private WSS/media evidence remains pending. Do not publish automatically or alter the live tailnet.

@@ -1,6 +1,16 @@
 # ZoomTime handoff
 
-Updated 2026-10-15. Version **0.3.2** is the current published GitHub prerelease. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+Updated 2026-10-16. Version **0.3.3** is the local guest-import patch; **0.3.2** remains the published GitHub prerelease. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+
+## 0.3.3 guest Tailscale status error —2026-10-16
+
+The guest screenshot showed pairing:import / SyntaxError / Unexpected token T / The Tailsc…. Tracing found the unguarded main-process JSON.parse of CLI status before the invitation parser, which already redacts invalid JSON. The same error was reproduced with controlled text status; guest and host regression cases failed before the fix. Both actual CLI paths on the local host return valid JSON/Running; the guest’s exact Tailscale warning/version/installation was not observed. Do not claim its token is invalid or a specific Tailscale variant is proven responsible.
+
+Moved the existing bounded status/up loop into the shared tested Tailscale helper. Guest status failure/non-JSON/invalid shape allows invitation import after opening the installed GUI; user must connect Tailscale there if automation is unavailable. Actual authenticated WSS with normal certificate validation determines reachability, not a guessed VPN state. Host CLI status remains mandatory with a redacted actionable error; private Serve/conflict/grant behavior is unchanged. Supported stopped sessions still auto-connect. Capture the invitation from clipboard before awaiting another app’s opening, keeping it main-only and retaining existing validation/storage/auth. No shell, TLS, media or permission bypass; no live tailnet changes.
+
+Full unit suite68pass; typecheck/lint/diff pass. Initial failing fixtures reproduced the exact raw SyntaxError, then passed after the role-specific fix. Packaged arm64 checks pass28 groups at320×180 and160×90, including existing permission/device/native-window/IPC/authentication/Keychain checks. GitHub anonymous update discovery hit its API rate limit; the correctly surfaced retry state is recorded, not counted as discovery success. Both architecture signature/payload/ZIP verification is recorded in docs/VERIFICATION.md. Version0.3.3 packages are local; do not publish automatically. Only guest needs this protocol-compatible patch; a0.3.2 host and existing invitation remain compatible. Guest should connect Tailscale, install the matching patch after quitting, copy the complete host invitation and retry Paste. No pairing reset is necessary solely for this pre-import error.
+
+Actual guest import, network/media and prior physical gates remain pending. No invitation, clipboard or private status was printed or sent. The user closed their host after the explicit test-port request; full suite passed without stopping a call ourselves.
 
 ## 2026-10-15 README restructure (documentation only)
 

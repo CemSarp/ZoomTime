@@ -24,6 +24,9 @@ so two people on two Macs can watch together and still see each other.
 
 </div>
 
+> **Local patch 0.3.3:** fixes guest invitation import when Tailscale returns text instead of JSON. The public download links below still point to0.3.2; the patch is not published yet. See [pairing fix details](docs/TECHNICAL_GUIDE.md#guest-invitation-import-error).
+
+
 ---
 
 ## 💡 What is ZoomTime?

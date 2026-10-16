@@ -73,6 +73,12 @@ Choose **Mini window** to keep the partner visible. This shrinks the same window
 
 **Reset pairing…** revokes the old guest after a successful encrypted save. Recreate the host and send a new invitation. If Keychain cannot save the reset, the host and capture stop and the app explicitly reports that revocation was not saved. Unlock Keychain and retry Reset before relying on revocation. Retry connection deliberately ends a current call; brief signaling outages otherwise recover automatically while retaining working media.
 
+## Guest invitation import error
+
+An error mentioning `pairing:import`, `Unexpected token 'T'` and `The Tailsc…` comes from parsing Tailscale CLI status before invitation validation. It does not identify a bad invitation. The0.3.3 local patch lets guests continue when CLI status is unavailable/non-JSON: open Tailscale and connect to the shared network, then paste the complete host invitation again. The private WSS connection still verifies TLS and authentication; CLI fallback never marks the VPN or host as online. Automatic hosting still needs valid CLI status. Supported stopped-session auto-connect remains available on both roles. No reset/new credentials are required solely for this error.
+
+Only the guest needs this compatible patch to fix import;0.3.2 hosts remain compatible. Replace the app after quitting, leaving existing pairing/profile intact. This patch is not yet a GitHub release. If the next status is Host unavailable, inspect actual Tailscale/private Serve reachability; a successful import is not proof of WebRTC connectivity.
+
 ## Troubleshooting
 
 | Problem | What to check |

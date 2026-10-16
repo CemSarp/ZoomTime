@@ -2,8 +2,7 @@ import { app, BrowserWindow, Menu, dialog, ipcMain, protocol, screen, session, s
 import { readFileSync, existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { setTimeout as delay } from 'node:timers/promises';
-import { setupTailscaleHost } from './tailscale.ts';
+import { connectTailscale, setupTailscaleHost } from './tailscale.ts';
 import { decodePreferences } from './preferences.ts';
 import { join } from 'node:path';
 import { release } from 'node:os';
@@ -137,26 +136,19 @@ async function createWindow(): Promise<void> {
     try { return (await exec(cli, args, { timeout: 20_000, maxBuffer: 1_048_576, encoding: 'utf8' })).stdout; }
     catch { throw new Error('Tailscale could not complete setup. Open Tailscale, connect and sign in, then retry. Check HTTPS certificates are enabled if hosting.'); }
   };
-  const connectTailscale = async (): Promise<void> => {
+  const openAndConnectTailscale = async (requireCli = true): Promise<void> => {
     const path = '/Applications/Tailscale.app';
     if (!existsSync(path)) throw new Error('Install Tailscale in Applications first. Sign in with your own account on each Mac.');
     const opened = await shell.openPath(path);
     if (opened) throw new Error('Tailscale could not open. Open it from Applications and retry.');
-    let status: { BackendState?: string; Self?: { Online?: boolean } } = {};
-    for (let attempt = 0; attempt < 8; attempt++) {
-      status = JSON.parse(await tailscaleCommand(['status', '--json']));
-      if (status.BackendState === 'Running' && status.Self?.Online) return;
-      if (status.BackendState === 'Stopped') { await tailscaleCommand(['up', '--timeout=15s']); continue; }
-      await delay(500);
-    }
-    throw new Error('Finish signing in or approving the VPN in Tailscale, then retry here.');
+    await connectTailscale(tailscaleCommand, requireCli);
   };
   ipcMain.handle('pairing:auto-host', async event => {
     authorize(event);
     if (setupPending || calling.state.role || calling.state.error) throw new Error('Reset existing pairing before setting up a host.');
     setupPending = true;
     try {
-      await connectTailscale();
+      await openAndConnectTailscale();
       const endpoint = await setupTailscaleHost(tailscaleCommand);
       if (window.isDestroyed()) return;
       await calling.createHost(endpoint);
@@ -171,7 +163,7 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('call:state', event => { authorize(event); return calling.state; });
   ipcMain.handle('pairing:host', async (event, endpoint: unknown) => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.createHost(endpoint); });
   ipcMain.handle('pairing:copy', async event => { authorize(event); await clipboard.writeText(calling.invitation()); });
-  ipcMain.handle('pairing:import', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await connectTailscale(); await calling.importInvitation(await clipboard.readText()); });
+  ipcMain.handle('pairing:import', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); const invitation = await clipboard.readText(); await openAndConnectTailscale(false); await calling.importInvitation(invitation); });
   ipcMain.handle('pairing:reset', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.reset(); });
   ipcMain.handle('call:retry', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.retry(); });
   ipcMain.handle('check:authorize', event => { authorize(event); calling.authorizeDeviceCheck(); });
