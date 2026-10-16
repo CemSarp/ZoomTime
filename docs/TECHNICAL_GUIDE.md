@@ -1,16 +1,20 @@
 # ZoomTime — technical guide
 
-> Moved from the project README on 2026-10-15 so the README can stay a friendly overview. The content below is unchanged apart from relative link paths. [← Back to the README](../README.md)
+> Moved from the project README on 2026-10-15 so the README can stay a friendly overview. Keep technical installation, controls and troubleshooting details current here. [← Back to the README](../README.md)
 
 A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, recording, analytics, screen sharing, or paid calling provider.
 
-**[Version 0.3.2 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+**[Version 0.3.3 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). Your Mac's full-screen test passed according to your report. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+
+## What changed in 0.3.3
+
+Guest invitation import can continue when Tailscale CLI status is unavailable/non-JSON; connect in the GUI if needed. Hosting retains strict status checks and normal TLS/authentication. A0.3.2 host remains compatible. See [pairing troubleshooting](#guest-invitation-import-error) and [release notes](releases/v0.3.3.md). Already on0.3.2? Use Settings → App updates, download and verify, then quit and replace the app in Applications.
 
 ## What changed in 0.3.2
 
 Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**. A newer GitHub build offers **Download update**, then **Show verified download in Finder**. End your call and quit, open the ZIP, drag ZoomTime into Applications and choose **Replace**, then reopen it. The app selects Apple Silicon/Intel automatically, verifies SHA-256 and retains macOS quarantine. Pairing/preferences stay in your profile. No background checks, automatic replacement, downgrade or extra service. Clearly labeled prereleases are included because this private project distributes candidates that way. See [updates and installation](UPDATES.md).
 
-Install0.3.2 once to get the feature;0.2.0 has no updater. Once installed, it reports no newer published build until a higher version is published. This prerelease was published at the user’s explicit request. See the [release notes](releases/v0.3.2.md).
+Install the current0.3.3 build to get the feature;0.2.0 has no updater. Existing0.3.2 installations can download0.3.3 through this control. This prerelease was published at the user’s explicit request. See the [release notes](releases/v0.3.2.md).
 
 ## What changed in 0.3.1
 
@@ -29,12 +33,12 @@ Open **Settings… → Camera & microphone check → Start camera & mic check** 
 
 ## Install
 
-Download the published0.3.2 app ZIP for your Mac:
+Download the published0.3.3 app ZIP for your Mac:
 
-- **[Apple Silicon / arm64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-arm64-0.3.2.zip)**
-- **[Intel / x64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-x64-0.3.2.zip)**
+- **[Apple Silicon / arm64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-arm64-0.3.3.zip)**
+- **[Intel / x64](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-x64-0.3.3.zip)**
 
-[All release assets and notes](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2). Download the app ZIP, not Source code.
+[All release assets and notes](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3). Download the app ZIP, not Source code.
 
 **[Simple setup: your Mac + your friend’s Mac](NETWORK_SETUP.md)** — separate Tailscale accounts, one shared network, host-only setup, then ZoomTime pairing.
 
@@ -42,7 +46,7 @@ Download the published0.3.2 app ZIP for your Mac:
 macOS 14+. Apple menu → About This Mac: Apple chip uses **arm64**; Intel processor uses **x64**.
 
 1. Download the matching app ZIP from the release page above. Local builds also remain under `out/make/zip/darwin/{arm64,x64}/`.
-2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/SHA256SUMS). For the new local builds, use `out/distribution/0.3.2/SHA256SUMS` instead; never compare different versions’ hashes.
+2. Compare `shasum -a 256 /path/to/downloaded.zip` with its entry in [the release checksum file](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/SHA256SUMS). For the new local builds, use `out/distribution/0.3.2/SHA256SUMS` instead; never compare different versions’ hashes.
 3. Extract and copy ZoomTime.app to Applications. Neither Node nor Xcode is needed to run it.
 4. This private build is ad-hoc signed and unnotarized. For a verified build you trust, use [Apple's per-app approval procedure](https://support.apple.com/en-gb/102445). Do not disable Gatekeeper globally or clear unrelated quarantine attributes. If macOS offers no approval, report the exact message.
 
@@ -75,9 +79,9 @@ Choose **Mini window** to keep the partner visible. This shrinks the same window
 
 ## Guest invitation import error
 
-An error mentioning `pairing:import`, `Unexpected token 'T'` and `The Tailsc…` comes from parsing Tailscale CLI status before invitation validation. It does not identify a bad invitation. The0.3.3 local patch lets guests continue when CLI status is unavailable/non-JSON: open Tailscale and connect to the shared network, then paste the complete host invitation again. The private WSS connection still verifies TLS and authentication; CLI fallback never marks the VPN or host as online. Automatic hosting still needs valid CLI status. Supported stopped-session auto-connect remains available on both roles. No reset/new credentials are required solely for this error.
+An error mentioning `pairing:import`, `Unexpected token 'T'` and `The Tailsc…` comes from parsing Tailscale CLI status before invitation validation. It does not identify a bad invitation. The0.3.3 patch lets guests continue when CLI status is unavailable/non-JSON: open Tailscale and connect to the shared network, then paste the complete host invitation again. The private WSS connection still verifies TLS and authentication; CLI fallback never marks the VPN or host as online. Automatic hosting still needs valid CLI status. Supported stopped-session auto-connect remains available on both roles. No reset/new credentials are required solely for this error.
 
-Only the guest needs this compatible patch to fix import;0.3.2 hosts remain compatible. Replace the app after quitting, leaving existing pairing/profile intact. This patch is not yet a GitHub release. If the next status is Host unavailable, inspect actual Tailscale/private Serve reachability; a successful import is not proof of WebRTC connectivity.
+Only the guest needs this compatible patch to fix import;0.3.2 hosts remain compatible. Replace the app after quitting, leaving existing pairing/profile intact. This patch is published as [v0.3.3](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3). If the next status is Host unavailable, inspect actual Tailscale/private Serve reachability; a successful import is not proof of WebRTC connectivity.
 
 ## Troubleshooting
 

@@ -7,10 +7,10 @@
 A tiny, private video-call window that floats over your full-screen movie,<br>
 so two people on two Macs can watch together and still see each other.
 
-[![Release](https://img.shields.io/badge/release-v0.3.2_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2)
+[![Release](https://img.shields.io/badge/release-v0.3.3_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](#-get-it)
-[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-arm64-0.3.2.zip)
-[![Intel](https://img.shields.io/badge/Intel-x64-0071c5?style=for-the-badge&logo=intel&logoColor=white)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-x64-0.3.2.zip)
+[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-arm64-0.3.3.zip)
+[![Intel](https://img.shields.io/badge/Intel-x64-0071c5?style=for-the-badge&logo=intel&logoColor=white)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-x64-0.3.3.zip)
 
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -24,7 +24,7 @@ so two people on two Macs can watch together and still see each other.
 
 </div>
 
-> **Local patch 0.3.3:** fixes guest invitation import when Tailscale returns text instead of JSON. The public download links below still point to0.3.2; the patch is not published yet. See [pairing fix details](docs/TECHNICAL_GUIDE.md#guest-invitation-import-error).
+> **Published v0.3.3:** fixes guest invitation import when Tailscale returns text instead of JSON. On0.3.2, use **Settings → App updates** to download the patch, then quit and replace it in Applications. See [pairing fix details](docs/TECHNICAL_GUIDE.md#guest-invitation-import-error).
 
 
 ---
@@ -234,10 +234,10 @@ flowchart LR
 
 | Your Mac (Apple menu → About This Mac) | Download |
 | --- | --- |
-| 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-arm64-0.3.2.zip)** |
-| 🔷 Intel processor | **[ZoomTime for Intel (x64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.2/ZoomTime-darwin-x64-0.3.2.zip)** |
+| 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-arm64-0.3.3.zip)** |
+| 🔷 Intel processor | **[ZoomTime for Intel (x64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.3/ZoomTime-darwin-x64-0.3.3.zip)** |
 
-Needs **macOS 14 or later**. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2)
+Needs **macOS 14 or later**. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3)
 
 > [!NOTE]
 > This is a free, private build. It isn't notarized by Apple, so macOS may ask you to approve it once. Use [Apple's per-app "Open Anyway" steps](https://support.apple.com/en-gb/102445) for the build you downloaded. Never turn Gatekeeper off.
@@ -292,15 +292,16 @@ flowchart LR
     V1["0.1.0 · Window probe"] --> V2["0.2.0 · Real private calling"]
     V2 --> V3["0.3.0 · Camera quality, mirror, one-click Host"]
     V3 --> V31["0.3.1 · Camera and mic check"]
-    V31 --> V32["0.3.2 · Check for updates"]:::now
-    V32 --> NEXT["🧪 Real two-Mac movie-night tests"]:::next
+    V31 --> V32["0.3.2 · Check for updates"]
+    V32 --> V33["0.3.3 · Guest pairing fix"]:::now
+    V33 --> NEXT["🧪 Real two-Mac movie-night tests"]:::next
 
     classDef now fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:2px
     classDef next fill:#fff,stroke:#868e96,color:#000,stroke-dasharray: 5 5
 ```
 
 > [!IMPORTANT]
-> **v0.3.2 is a prerelease.** Full-screen use passed on the host's Mac, and the automated local, security and packaging tests pass. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks, Intel hardware, and a three-hour movie session. ZoomTime uses **no relay servers** (no STUN/TURN), so some network combinations may not connect. See [release acceptance](docs/ACCEPTANCE.md).
+> **v0.3.3 is a prerelease.** Full-screen use passed on the host's Mac, and the automated local, security and packaging tests pass. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks, Intel hardware, and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
 
 ### 🙅 What ZoomTime intentionally doesn't do
 
@@ -318,7 +319,7 @@ No group calls · no chat · no screen sharing or movie streaming · no playback
 | 🏛️ | [Architecture and reasons](docs/ARCHITECTURE.md) | Every design decision and why it was made |
 | ✅ | [Release acceptance](docs/ACCEPTANCE.md) | Real-world tests that must pass before a full release |
 | 🧪 | [Verification](docs/VERIFICATION.md) | Automated and packaged test evidence |
-| 📝 | [Release notes v0.3.2](docs/releases/v0.3.2.md) | What's in the current prerelease |
+| 📝 | [Release notes v0.3.3](docs/releases/v0.3.3.md) | What's in the current prerelease |
 | 🤝 | [Handoff](HANDOFF.md) | Current project status for maintainers |
 
 ### 🔗 References

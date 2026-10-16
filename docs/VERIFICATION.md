@@ -1,5 +1,11 @@
 # Verification evidence
 
+## v0.3.3 publication and real updater download —2026-10-16
+
+Fresh full suite68pass, typecheck/lint/diff pass; both unchanged architecture bundles/ZIPs pass signatures, metadata, fuses, minimal payload, compiled-source equality, archive integrity and SHA-256. All five uploaded asset sizes/GitHub digests match local files, verified before publication. Annotated source tag1150b2e exactly matches the original clean build manifest. Versioned release notes:docs/releases/v0.3.3.md.
+
+Public anonymous API discovery offers0.3.3 to0.3.2. The updater source is unchanged since the0.3.2 release, and its complete arm64 state/download/reverification path succeeded in an isolated ignored folder: available→download→size/SHA-256 verified→quarantine present→ready. No installed app or real profile was replaced. Both architecture metadata selections pass. Evidence:out/verification/update-0.3.2-to-0.3.3.json and out/release/0.3.3/GitHub metadata. Earlier rate-limited checks below are historical and do not override this successful later observation. Real Finder replacement, Intel execution, guest Mac/network/media/long-session evidence remains pending.
+
 ## 0.3.3 guest import patch —2026-10-16
 
 Controlled Tailscale status text reproduced exactly SyntaxError/Unexpected token T/The Tailsc before the fix. The connection loop is now tested directly: guest fallback for unavailable/non-JSON/null/array status, strict redacted host error, unchanged stopped→up→Running auto-connect for both roles. Full suite68pass, typecheck/lint/diff pass. Real local CLI paths both return valid JSON/Running; no live up/Serve or policy changes were made. This does not establish the guest’s exact warning or Tailscale variant.

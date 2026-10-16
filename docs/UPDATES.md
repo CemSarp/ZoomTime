@@ -1,6 +1,6 @@
 # Update ZoomTime
 
-Install the matching ZIP from [GitHub v0.3.2](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.2) once to get these controls. Version0.2.0 has no updater. Future local builds become available only after an explicit publication.
+Install the matching ZIP from [GitHub v0.3.3](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3) once to get these controls. If already on0.3.2, Check for Updates downloads0.3.3 directly. Version0.2.0 has no updater. Future local builds become available only after an explicit publication.
 
 1. Open **ZoomTime → Check for Updates…** in the Mac menu bar, or **Settings… → App updates → Check for updates**.
 2. If a newer build is published, review its version and **prerelease** label. Press **Download update**. The right Apple Silicon/Intel ZIP is selected for the running app. A prerelease is a test candidate; the two-Mac/long-session checks still apply.
@@ -17,4 +17,4 @@ The download does not replace or restart your running app. A check can run durin
 
 **Checksum/security metadata error:** the app refuses to offer that file. Check again and retry; report a repeated failure. Checksums come from the same HTTPS GitHub release as the archive, so trust in the publisher/GitHub remains necessary. They do not create a notarized publisher identity.
 
-For maintainers: publish numeric tags such as `v0.3.3`, with exactly `ZoomTime-darwin-arm64-0.3.3.zip` and `ZoomTime-darwin-x64-0.3.3.zip` as uploaded release assets. GitHub must provide a `sha256:` asset digest. Upload both builds before publishing the release; drafts are ignored. Prerelease flags are supported; `-beta` tag suffixes are not. The check selects the highest numeric version among the100 most recent releases. Keep prerelease status until physical acceptance evidence exists. Publishing needs a separate explicit request.
+For maintainers: publish numeric tags such as `v0.3.4`, with exactly `ZoomTime-darwin-arm64-0.3.4.zip` and `ZoomTime-darwin-x64-0.3.4.zip` as uploaded release assets. GitHub must provide a `sha256:` asset digest. Upload both builds before publishing the release; drafts are ignored. Prerelease flags are supported; `-beta` tag suffixes are not. The check selects the highest numeric version among the100 most recent releases. Keep prerelease status until physical acceptance evidence exists. Publishing needs a separate explicit request.

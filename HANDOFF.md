@@ -1,6 +1,14 @@
 # ZoomTime handoff
 
-Updated 2026-10-16. Version **0.3.3** is the local guest-import patch; **0.3.2** remains the published GitHub prerelease. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+Updated 2026-10-16. Version **0.3.3** is the published GitHub prerelease with the guest-import patch. Physical release acceptance remains pending. Preserve previous archives. The 0.2.0 build/release notes below are historical evidence, superseded for current software counts by this section.
+
+## 2026-10-16 v0.3.3 publication and updater check
+
+The user explicitly requested publication and asked whether Check for Updates works. Pushed the fix commit and annotated tagv0.3.3 at exact clean source1150b2efbaee3ed3b13a5b27621670ee2dd83df6. Uploaded both original architecture ZIPs, portable SHA256SUMS, INSTALL.md and original build manifest as a draft; verified all five sizes/digests before publishing the prerelease. Release:https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.3 . No rebuild/runtime/tailnet changes for publication.68unit tests, typecheck/lint/diff and fresh signature/fuse/payload/ZIP/hash checks pass.
+
+The public anonymous API now offers0.3.3 to0.3.2. The updater module is unchanged since0.3.2 (verified Git diff), and a full arm64 check→download→size/SHA-256/quarantine→Ready/reverify flow passed using that module with currentVersion0.3.2 in an ignored isolated folder. No installed app/profile was replaced. Both architecture metadata selections pass; Intel execution remains pending. Evidence:out/verification/update-0.3.2-to-0.3.3.json.0.3.2 and newer include the updater;0.2.0 needs manual installation. User still finishes replacement in Finder after quitting. GitHub propagation/rate limits can temporarily delay checks; direct release assets are the fallback. Earlier rate-limit evidence below remains historical.
+
+README, setup/update/technical guides and versioned release notes now point to0.3.3; prior versions/tags/assets remain preserved. Actual guest retry, two-network/no-TURN hardware media, partner overlay and long-session acceptance remain pending; publication is not physical acceptance evidence.
 
 ## 0.3.3 guest Tailscale status error —2026-10-16
 
