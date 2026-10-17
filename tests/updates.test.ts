@@ -152,3 +152,12 @@ test('a failed installation offers the verified Finder fallback without bypassin
  await updates.check();await updates.download();await updates.install(async()=>{throw new Error('Folder not writable');});assert.equal(updates.state.status,'error');assert.equal(updates.state.canReveal,true);assert.equal(await updates.verifiedPath(),path);
  await writeFile(path,Buffer.alloc(data.length));await assert.rejects(updates.verifiedPath());assert.equal(updates.state.canReveal,false);
 });
+
+test('group prerelease is offered to 0.3.4 arm64 users and equal versions do not update', () => {
+  const metadata = [release('0.4.0', { assets: [asset('0.4.0')] })];
+  const selected = selectUpdate(metadata, '0.3.4', 'arm64');
+  assert.equal(selected.release?.version, '0.4.0');
+  assert.equal(selected.release?.prerelease, true);
+  assert.equal(selected.release?.name, 'ZoomTime-darwin-arm64-0.4.0.zip');
+  assert.equal(selectUpdate(metadata, '0.4.0', 'arm64').available, false);
+});

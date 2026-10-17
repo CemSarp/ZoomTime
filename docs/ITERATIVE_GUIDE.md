@@ -77,3 +77,18 @@ User explicitly revises screen-capture scope. For a separately authorized build,
 ## 2026-10-17 source-only follow-up
 
 User requests `codex/screen-capture` branch and GitHub source push, retires Intel/Rosetta and explicitly prohibits new builds now. Run full unit tests, TypeScript/lint/diff checks, Swift `-typecheck` only and script syntax checks. Do not run npm start/package/make, native build/test:capture, checksums or GUI tests against stale binaries. Retain all old artifacts/releases. Confirm source branch/remote and exact committed files; push without force. Document the TCC signature mismatch and earlier Codex attribution; repeat actual permission recovery only after a future build is authorized.
+
+
+## 2026-10-17 group calling source-only iteration
+
+The approved [group design](superpowers/specs/2026-10-17-group-calling-design.md) revises the two-person cap to one named2–5-member group and one active call. Follow the [sequential task ledger](superpowers/plans/2026-10-17-group-calling.md). Preserve one renderer/shared capture; isolate peer negotiations and failures; explicit named recipients/acceptance; individual credentials/ciphertext migration backups; leave vs host shutdown; strict authenticated pair routing and narrow IPC. All members update to protocol v2.
+
+Run full source/unit/type/lint/diff and harness syntax checks. Do not run app/helper builds, npm start, GUI/native/media harnesses or release/install tasks in this source-only iteration. Future authorized generated-media checks must assert every directed link at2/3/4/5 members and preserve existing two-person lifecycle/permission tests. Actual Macs, all guest-to-guest routes, full-screen/player behavior, downloaded install/migration and60-minute/three-hour group performance remain pending physical release gates. Screen transmission is deferred. Do not change live tailnet settings or deliver invitations automatically.
+
+## 2026-10-17 authorized experimental test build
+
+The user subsequently authorizes building and updating ZoomTime Experimental locally. Preserve old output/bundle, build arm64, verify current code/signatures and run isolated generated-media/package checks. Do not replace the regular app or publish. The current test-build results and exact rollback/artifact paths are in HANDOFF and VERIFICATION; physical acceptance remains pending.
+
+## v0.4.0 publication iteration
+
+Explicit user publication authorization supersedes earlier no-build/no-release restrictions for this candidate. Verify the scoped source diff and complete checks, commit current source/version/docs on the existing feature branch, build from clean source, validate arm64/signatures/fuses/payload/ZIP and provenance, push the branch and annotated tag, upload exact updater-compatible assets to a draft, verify remote sizes/digests, then publish as prerelease. Verify anonymous in-app discovery and an actual0.3.4 updater download with quarantine/checksum, using isolated profiles. Do not install over user apps to prove downloading. Publish the screen-capture permission bug and outstanding physical evidence clearly.

@@ -81,7 +81,7 @@ async function smoke(minimum) {
     assert.equal(await evaluate('typeof require'), 'undefined');
     assert.equal(await evaluate('typeof process'), 'undefined');
     assert.equal(await evaluate('isSecureContext'), true);
-    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'installUpdate', 'onUpdateState', 'getScreenCaptureState', 'openScreenCaptureSettings', 'discoverScreenSources', 'startScreenCapture', 'stopScreenCapture', 'revealScreenCapture', 'onScreenCaptureState'].sort());
+    assert.deepEqual(await evaluate('Object.keys(window.zoomtime).sort()'), ['addMember', 'renameMember', 'revokeMember', 'authorizeCapture', 'close', 'copyInvitation', 'createHost', 'getCallingState', 'getState', 'importInvitation', 'onCallEvent', 'onState', 'onSettings', 'releaseCapture', 'resetPairing', 'restore', 'retryConnection', 'sendSignal', 'setMode', 'setPreferences', 'setupHost', 'setFullScreen', 'minimize', 'authorizeDeviceCheck', 'releaseDeviceCheck', 'getUpdateState', 'checkForUpdates', 'downloadUpdate', 'revealUpdate', 'installUpdate', 'onUpdateState', 'getScreenCaptureState', 'openScreenCaptureSettings', 'discoverScreenSources', 'startScreenCapture', 'stopScreenCapture', 'revealScreenCapture', 'onScreenCaptureState'].sort());
     const updater = await evaluate('window.zoomtime.getUpdateState()');
     assert.equal(updater.status, 'idle', 'No network check runs at startup');
     assert.equal(updater.currentVersion, JSON.parse(readFileSync('package.json','utf8')).version);
@@ -91,9 +91,9 @@ async function smoke(minimum) {
     assert.equal((await evaluate('window.zoomtime.getUpdateState()')).status,'idle','Downloading requires an available newer release');
     assert.equal(await evaluate("window.zoomtime.authorizeCapture('call').then(()=>false,()=>true)"), true, 'Unpaired apps cannot authorize capture');
     assert.equal(await evaluate("window.zoomtime.sendSignal({v:1,type:'request'}).then(()=>false,()=>true)"), true, 'Unpaired apps cannot signal a call');
-    assert.deepEqual(await evaluate("window.zoomtime.getCallingState().then(s=>Object.keys(s).sort())"), ['call','endpoint','error','network','peerOnline','role']);
-    assert.equal(await evaluate("getComputedStyle(document.getElementById('remote')).objectFit"),'contain');
-    await evaluate('window.__remoteForTest=document.getElementById("remote")');
+    assert.deepEqual(await evaluate("window.zoomtime.getCallingState().then(s=>Object.keys(s).sort())"), ['busy','call','endpoint','error','groupId','hostId','members','network','role','selfId'].sort());
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).objectFit"),'contain');
+    await evaluate('window.__remoteForTest=document.getElementById("remote-grid")');
     assert.equal(await evaluate("(() => {try {eval('1+1');return false;}catch(e){return e.name==='EvalError';}})()"), true, 'CSP must reject string evaluation');
     assert.equal(await evaluate("fetch('https://example.com').then(()=>false,()=>true)"), true, 'Renderer outbound requests must be blocked');
     assert.equal(await evaluate("window.open('https://example.com') === null"), true);
@@ -144,18 +144,18 @@ async function smoke(minimum) {
     }
     assert.equal((await evaluate('window.zoomtime.getState()')).alwaysOnTop, false, 'Regular window defaults to normal level');
     for (const normalAlwaysOnTop of [true, false]) for (const miniAlwaysOnTop of [false, true]) {
-      const next = await evaluate(`window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),normalAlwaysOnTop:${normalAlwaysOnTop},miniAlwaysOnTop:${miniAlwaysOnTop}})`);
+      const next = await evaluate(`(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),normalAlwaysOnTop:${normalAlwaysOnTop},miniAlwaysOnTop:${miniAlwaysOnTop}}))()`);
       assert.equal(next.alwaysOnTop, normalAlwaysOnTop, 'Current regular level applies immediately');
       assert.equal((await evaluate("window.zoomtime.setMode('mini')")).alwaysOnTop, miniAlwaysOnTop, 'Mini uses its own saved native level');
       assert.equal((await evaluate('window.zoomtime.restore()')).alwaysOnTop, normalAlwaysOnTop, 'Restore reapplies the regular level');
       assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession, 'Top-level changes preserve the renderer');
     }
     if (!minimum) await screenshot('normal.png');
-    assert.equal(await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true)"),true,'Invalid preferences must be rejected at IPC');
-    await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:true,miniSelf:true,quality:'1080p',previewSize:35})");
+    assert.equal(await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true))()"),true,'Invalid preferences must be rejected at IPC');
+    await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:true,miniSelf:true,quality:'1080p',previewSize:35}))()");
     await evaluate("window.__canvasForTest=document.createElement('canvas');window.__canvasForTest.width=320;window.__canvasForTest.height=180;let c=window.__canvasForTest.getContext('2d');c.fillStyle='#395986';c.fillRect(0,0,320,180);c.fillStyle='#fff';c.font='24px system-ui';c.fillText('Synthetic preview',20,90);window.__previewStream=window.__canvasForTest.captureStream(24);document.getElementById('local').srcObject=window.__previewStream;document.getElementById('self-preview').hidden=false;window.__previewForTest=document.getElementById('local');");
     assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'matrix(-1, 0, 0, 1, 0, 0)','Mirror only self-preview');
-    assert.equal(await evaluate("getComputedStyle(document.getElementById('remote')).transform"),'none');
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('remote-grid')).transform"),'none');
     const mini = await evaluate("window.zoomtime.setMode('mini')");
     assert.deepEqual({ width: mini.bounds.width, height: mini.bounds.height },
       minimum ? { width: 160, height: 90 } : { width: 320, height: 180 });
@@ -176,7 +176,7 @@ async function smoke(minimum) {
     await delay(500);
     assert.ok((await evaluate('window.zoomtime.getState()')).preferences.previewSize>35,'Dragging preview corner changes and saves its relative size in mini mode');
     await screenshot(minimum ? 'mini-self-minimum.png' : 'mini-self.png');
-    await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:false,miniSelf:false,quality:'720p',previewSize:24})");
+    await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:false,miniSelf:false,quality:'720p',previewSize:24}))()");
     assert.equal(await evaluate("getComputedStyle(document.getElementById('self-preview')).display"),'none','Mini preview can be hidden');
     assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'none','Mirroring can be disabled');
 
@@ -220,7 +220,7 @@ async function smoke(minimum) {
     for (let i = 0; i < 5; i++) {
       await evaluate("window.zoomtime.setMode('mini')");
       assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession);
-      assert.equal(await evaluate('document.getElementById("remote")===window.__remoteForTest'),true,'Mode changes must preserve the partner video element');
+      assert.equal(await evaluate('document.getElementById("remote-grid")===window.__remoteForTest'),true,'Mode changes must preserve the group stage');
       await evaluate('window.zoomtime.restore()');
       assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession);
     }
@@ -248,12 +248,12 @@ async function smoke(minimum) {
       assert.equal((await evaluate('window.zoomtime.getState()')).preferences.speakerEchoReduction,true,'Experimental echo switch persists explicit opt-in');
       assert.equal(await evaluate("document.getElementById('local').srcObject===null&&document.getElementById('check-video').srcObject===null"),true,'Enabling echo reduction never starts capture');
       assert.match(await evaluate("document.getElementById('speaker-echo-status').textContent"),/next call or device check/);
-      assert.equal(await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:'on'}).then(()=>false,()=>true)"),true,'Experimental preference rejects invalid IPC values');
-      await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:false})");
+      assert.equal(await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:'on'}).then(()=>false,()=>true))()"),true,'Experimental preference rejects invalid IPC values');
+      await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:false}))()");
       await evaluate("document.getElementById('normal-always-on-top').click()");
       for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).alwaysOnTop)break;await delay(50);}
       assert.equal((await evaluate('window.zoomtime.getState()')).alwaysOnTop,true,'Regular switch changes the actual native window level');
-      await evaluate("window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),normalAlwaysOnTop:false})");
+      await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),normalAlwaysOnTop:false}))()");
       await evaluate("document.getElementById('mirror').click()");
       for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.mirror)break;await delay(50);}
       assert.equal((await evaluate('window.zoomtime.getState()')).preferences.mirror,true,'Settings checkbox updates persistent preference');
@@ -287,10 +287,22 @@ async function smoke(minimum) {
     }
     await evaluate("window.zoomtime.createHost('wss://local-test.tail.ts.net:8443/zoomtime')");
     for(let i=0;i<50;i++){if(await evaluate("window.zoomtime.getCallingState().then(s=>s.network.state==='online')"))break;await delay(50);}
-    assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role==='host'&&s.network.state==='online'&&!s.peerOnline)"),true,'Packaged host must start authenticated loopback signaling');
+    assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role==='host'&&s.network.state==='online'&&s.members.length===1&&s.selfId===s.hostId)"),true,'Packaged host must start authenticated loopback signaling');
     assert.equal(await evaluate("(() => {const c=getComputedStyle(document.getElementById('reset')).backgroundColor.match(/\\d+/g).map(Number);return c[0]>170&&c[1]<100&&c[2]<120;})()"),true,'Reset pairing is clearly red');
     assert.equal(await evaluate("(() => {const a=document.getElementById('reset').getBoundingClientRect(),b=document.getElementById('retry').getBoundingClientRect();return a.left>=0&&a.right<=innerWidth&&(a.left>=b.right||a.top>=b.bottom);})()"),true,'Pairing actions fit without overlap');
     await screenshot(minimum ? 'paired-compact.png' : 'paired.png');
+    await evaluate("window.zoomtime.addMember('Alice')");
+    const memberId=await evaluate("window.zoomtime.getCallingState().then(s=>s.members.find(m=>m.name==='Alice').id)");
+    assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>JSON.stringify(s).includes('token'))"),false,'Renderer state never contains pairing credentials');
+    await evaluate(`(() => { const row=document.querySelector('[data-member-id="'+${JSON.stringify(memberId)}+'"]'); [...row.querySelectorAll('button')].find(b=>b.textContent==='Rename').click(); })()`);
+    assert.equal(await evaluate("document.getElementById('rename-member').open"),true,'Actual Rename action opens an HTML dialog');
+    await evaluate("document.getElementById('rename-name').value='Alicia';document.getElementById('rename-form').requestSubmit()");
+    for(let i=0;i<50;i++){if(await evaluate("!document.getElementById('rename-member').open"))break;await delay(50);}
+    assert.equal(await evaluate("document.getElementById('rename-member').open"),false,'Saving Rename closes its dialog');
+    assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.members.some(m=>m.name==='Alicia'))"),true);
+    assert.equal(await evaluate("window.zoomtime.copyInvitation('invalid').then(()=>false,()=>true)"),true,'A guest identity is required for invitation copying');
+    await evaluate(`window.zoomtime.revokeMember(${JSON.stringify(memberId)})`);
+    assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.members.length===1)"),true);
     const encrypted = readFileSync(join(userData,'pairing.bin'));
     assert.equal(encrypted.includes(Buffer.from('hostToken')),false);
     assert.throws(()=>JSON.parse(encrypted.toString('utf8')),'Pairing must not be plaintext JSON');

@@ -11,7 +11,15 @@ const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map(),
 const entry='zoomtime://app/main_window/index.html';
 protocol.registerSchemesAsPrivileged([{scheme:'zoomtime',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let server;
-const traffic = { host: { ice: 0, description: 0 }, guest: { ice: 0, description: 0 } };
+const roles=['host','guest','guest3','guest4','guest5'];
+const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+const group={v:2,role:'host',endpoint:'wss://test.tail.ts.net:8443/zoomtime',groupId:id(90),hostId:id(1),members:roles.map((name,i)=>({id:id(i+1),name,token:randomBytes(32).toString('base64url')}))};
+const member=role=>group.members[roles.indexOf(role)];
+const traffic=Object.fromEntries(roles.map(role=>[role,{ice:0,description:0}]));
+const phase=()=>{const c=server?.coordinator.snapshot;if(!c)return undefined;if(!c.pairs.length)return 'ringing';return c.pairs.every(p=>p.phase==='connected')?'connected':c.pairs.some(p=>p.phase==='reconnecting')?'reconnecting':'connecting';};
+const generation=()=>Math.max(1,...(server?.coordinator.snapshot?.pairs.map(p=>p.generation)??[]));
+const mediaOf=role=>server?.coordinator.snapshot?.members.find(m=>m.id===member(role).id)?.media;
+
 const wait = async (predicate, label, timeout = 32000) => {
   const end = Date.now() + timeout;
   while (!predicate()) { assert.ok(Date.now() < end, label); await new Promise(r => setTimeout(r, 50)); }
@@ -22,29 +30,42 @@ app.whenReady().then(async () => {
   const { allowCallMedia, CONTENT_SECURITY_POLICY, CALL_PERMISSIONS_POLICY } = await import(join(root,'src/security.ts'));
   const roleOf=event=>[...windows].find(([,w])=>w.webContents===event.sender&&event.senderFrame===w.webContents.mainFrame&&event.senderFrame.url===entry)?.[0];
   protocol.handle('zoomtime',request=>{
-    const asset=request.url===entry?'index.html':request.url==='zoomtime://app/main_window/renderer.js'?'renderer.js':null;
-    return asset?new Response(readFileSync(join(root,'out/media-tests',asset)),{headers:{'Content-Type':asset.endsWith('.html')?'text/html':'text/javascript','Content-Security-Policy':CONTENT_SECURITY_POLICY,'Permissions-Policy':CALL_PERMISSIONS_POLICY}}):new Response('',{status:404});
+    const asset=request.url===entry?'index.html':request.url==='zoomtime://app/main_window/renderer.js'?'renderer.js':request.url==='zoomtime://app/main_window/index.css'?'index.css':null;
+    return asset?new Response(readFileSync(join(root,'out/media-tests',asset)),{headers:{'Content-Type':asset.endsWith('.html')?'text/html':asset.endsWith('.css')?'text/css':'text/javascript','Content-Security-Policy':CONTENT_SECURITY_POLICY,'Permissions-Policy':CALL_PERMISSIONS_POLICY}}):new Response('',{status:404});
   });
   session.defaultSession.setPermissionCheckHandler((contents,permission,_origin,details)=>allowCallMedia(permission,details.requestingUrl??'',entry,details.isMainFrame,[...windows].some(([role,w])=>w.webContents===contents&&authorized.has(role)),details.mediaType?[details.mediaType]:[]));
   session.defaultSession.setPermissionRequestHandler((contents,permission,callback,details)=>callback(allowCallMedia(permission,details.requestingUrl,entry,details.isMainFrame,[...windows].some(([role,w])=>w.webContents===contents&&authorized.has(role)),details.mediaTypes??[])));
-  ipcMain.handle('harness:authorize',(event,action)=>{const role=roleOf(event),call=server.coordinator.snapshot;assert.ok(role);
-    assert.ok((action==='check'&&!call)||(action==='call'&&!call&&server.coordinator.isOnline(role==='host'?'guest':'host'))||(action==='accept'&&call?.phase==='ringing'&&call.caller!==role)||(['camera','devices'].includes(action)&&call&&call.phase!=='ringing'));authorized.add(role);});
-  ipcMain.handle('harness:release',event=>{const role=roleOf(event);assert.ok(role);authorized.delete(role);});
-  const tokens = { hostToken: randomBytes(32).toString('base64url'), guestToken: randomBytes(32).toString('base64url') };
-  server = await startSignaling(tokens, 0);
-  ipcMain.handle('harness:send', (event, message) => { const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0]; assert.ok(role); if(message.type==='request'&&dropRequests.delete(role))return; if(message.type in traffic[role])traffic[role][message.type]++; assert.equal(clients.get(role).send(message), true); });
+  const leases=new Map();
+  ipcMain.handle('harness:authorize',(event,action)=>{
+    const role=roleOf(event),call=server.coordinator.snapshot;assert.ok(role);const self=member(role).id,own=call?.members.find(m=>m.id===self);
+    if(action==='check'||action==='permission-probe')assert.ok(!own||!['joined','invited'].includes(own.status));
+    else if(action.action==='call'){assert.ok(!call&&action.targetIds.length&&action.targetIds.every(id=>id!==self&&server.coordinator.isOnline(id)));leases.set(role,action);}
+    else if(action.action==='accept'){assert.ok(own?.status==='invited'&&call.id===action.callId&&own.invitationId===action.invitationId);leases.set(role,action);}
+    else assert.ok(['camera','devices'].includes(action.action)&&own?.status==='joined'&&authorized.has(role)&&call.id===action.callId);
+    authorized.add(role);
+  });
+  ipcMain.handle('harness:release',event=>{const role=roleOf(event);assert.ok(role);authorized.delete(role);leases.delete(role);});
+  server = await startSignaling(group, 0);
+  ipcMain.handle('harness:send', (event, message) => {
+    const role=roleOf(event);assert.ok(role);
+    if(message.type==='request'||message.type==='accept')assert.ok(authorized.has(role)&&leases.get(role)?.operationId===message.operationId);
+    if(message.type==='request'&&dropRequests.delete(role))return;
+    if(message.type in traffic[role])traffic[role][message.type]++;
+    assert.equal(clients.get(role).send(message),true);
+  });
   ipcMain.on('harness:result', (event, result) => {
     const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0];
     if (result.type === 'echo-probe') echoResults.set(role,result);
     if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); if(result.type==='quality')qualityResults.set(role,result); if(result.type==='check')checkResults.set(role,result); if(result.type==='check-race')checkRaceResults.set(role,result); }
   });
-  for (const role of ['host', 'guest']) {
+  const makeWindow=async role=>{
     const window = new BrowserWindow({ width: 400, height: 300, show: true, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required', preload: join(root, 'tests/media-preload.cjs') } });
     windows.set(role, window); await window.loadURL(entry);
-  }
+  };
+  for(const role of ['host','guest'])await makeWindow(role);
   await wait(() => ready.size === 2, 'Both real browser contexts must initialize');
   const connect = role => {
-    const client = new SignalingClient(`ws://127.0.0.1:${server.port}/zoomtime`, role === 'host' ? tokens.hostToken : tokens.guestToken,
+    const client = new SignalingClient(`ws://127.0.0.1:${server.port}/zoomtime`, member(role).token,
       message => {
         if(message.type === 'description') { const timer = setTimeout(()=>{timers.delete(timer);windows.get(role).webContents.send('harness:event', message);},200); timers.add(timer); }
         else windows.get(role).webContents.send('harness:event', message);
@@ -52,9 +73,9 @@ app.whenReady().then(async () => {
     clients.set(role, client); client.start();
   };
   for (const role of ['host', 'guest']) connect(role);
-  const action = (role, action) => windows.get(role).webContents.send('harness:event', { type: 'action', action });
+  const action = (role, action, extra={}) => windows.get(role).webContents.send('harness:event', { type: 'action', action, ...extra });
   const report = async () => { identityReports.clear(); for (const role of ['host','guest']) action(role,'report'); await wait(()=>identityReports.size===2,'Collect peer identity reports'); snapshot=new Map(identityReports); };
-  await wait(() => server.coordinator.isOnline('host') && server.coordinator.isOnline('guest'), 'Both roles authenticate');
+  await wait(() => server.coordinator.isOnline(member('host').id) && server.coordinator.isOnline(member('guest').id), 'Both roles authenticate');
   action('host','probe-permissions');await wait(()=>permissionResults.has('host'),'Real getUserMedia permission probe finishes');
   assert.deepEqual(permissionResults.get('host'),{type:'permission-probe',denied:true,kinds:['audio','video']});
   action('host','probe-echo'); await wait(()=>echoResults.has('host'),'Probe bundled Chromium system-audio cancellation with fake microphone');
@@ -90,7 +111,7 @@ app.whenReady().then(async () => {
   await wait(()=>reports.get('host')?.liveTracks===0,'Lost call-request acknowledgement must end capture within 30 seconds',35000);
   const requestTimeoutMs=Date.now()-requestStarted;
   windows.get('host').webContents.send('harness:event', { type: 'action', action: 'start' });
-  await wait(() => server.coordinator.snapshot?.phase === 'connected', 'Real local WebRTC must connect in both directions');
+  await wait(() => phase() === 'connected', 'Real local WebRTC must connect in both directions');
   await wait(() => [...reports.values()].filter(r => r.videoHeight > 0).length === 2, 'Both partners decode real synthetic video');
   await wait(() => [...reports.values()].filter(r => r.state?.stats?.receivedAudioPackets > 0).length === 2, 'Both partners receive actual audio packets');
   await report();
@@ -106,25 +127,25 @@ app.whenReady().then(async () => {
   }
   qualityResults.clear(); action('host','fail-quality'); await wait(()=>qualityResults.has('host'),'A camera quality failure is actionable');
   assert.equal(qualityResults.get('host').failed,true); assert.equal(qualityResults.get('host').capture.height,720);
-  action('host','camera'); await wait(()=>server.coordinator.snapshot?.media.host.video===false,'Disable camera after failed quality change');
+  action('host','camera'); await wait(()=>mediaOf('host').video===false,'Disable camera after failed quality change');
   action('host','camera'); await wait(()=>reports.get('host')?.state?.stats?.captureHeight===720,'Failed quality must not become the preference for reacquired camera');
   action('host','use-canvas-video'); await wait(()=>reports.get('host')?.state?.stats?.captureHeight===360,'Return to synthetic canvas for controlled freeze tests');
   const callId = server.coordinator.snapshot.id;
-  windows.get('host').webContents.send('harness:event', { v:1, type:'ice', callId, generation:999, candidate:null });
+  windows.get('host').webContents.send('harness:event', { v:2, type:'ice', callId, pairId:server.coordinator.snapshot.pairs[0].id, generation:999, candidate:null,fromId:member('guest').id });
   windows.get('host').setMinimumSize(160,90); windows.get('host').setBounds({width:160,height:90}); windows.get('host').setBounds({width:400,height:300});
   await report(); assert.ok([...snapshot.values()].every(r=>r.samePeer&&r.transceivers===2));
-  clients.get('guest').stop(); await wait(()=>server.coordinator.snapshot?.phase==='reconnecting','Observe real signaling outage');
-  connect('guest'); await wait(()=>server.coordinator.snapshot?.phase==='connected','Resume the authenticated existing call');
+  clients.get('guest').stop(); await wait(()=>phase()==='reconnecting','Observe real signaling outage');
+  connect('guest'); await wait(()=>phase()==='connected','Resume the authenticated existing call');
   assert.equal(server.coordinator.snapshot.id,callId); await report(); assert.ok([...snapshot.values()].every(r=>r.samePeer));
-  server.coordinator.receive('guest',{v:1,type:'recover',callId},Date.now());
-  await wait(()=>server.coordinator.snapshot?.phase==='connected'&&server.coordinator.snapshot.generation===2,'Host-led ICE restart finishes using the original peers');
+  server.coordinator.receive(member('guest').id,{v:2,type:'recover',callId,pairId:server.coordinator.snapshot.pairs[0].id,generation:generation()},Date.now());
+  await wait(()=>phase()==='connected'&&generation()===2,'Host-led ICE restart finishes using the original peers');
   await report(); assert.ok([...snapshot.values()].every(r=>r.samePeer&&r.transceivers===2));
   windows.get('host').webContents.send('harness:event', { type: 'action', action: 'camera' });
-  await wait(() => server.coordinator.snapshot?.media.host.video === false && reports.get('host')?.liveTracks === 1, 'Camera off releases its actual track');
+  await wait(() => mediaOf('host').video === false && reports.get('host')?.liveTracks === 1, 'Camera off releases its actual track');
   windows.get('host').webContents.send('harness:event', { type: 'action', action: 'camera' });
-  await wait(() => server.coordinator.snapshot?.media.host.video === true && reports.get('host')?.liveTracks === 2, 'Camera on replaces the existing sender track');
+  await wait(() => mediaOf('host').video === true && reports.get('host')?.liveTracks === 2, 'Camera on replaces the existing sender track');
   windows.get('host').webContents.send('harness:event', { type: 'action', action: 'mute' });
-  await wait(() => server.coordinator.snapshot?.media.host.audio === false, 'Mute disables transmitted audio');
+  await wait(() => mediaOf('host').audio === false, 'Mute disables transmitted audio');
   action('host','lose-camera'); await wait(()=>reports.get('host')?.state?.error?.includes('disconnected'),'Report a disappeared device');
   action('host','recover-devices'); await wait(()=>reports.get('host')?.liveTracks===2&&!reports.get('host')?.state.error,'Reacquire default devices without a second peer');
   await report(); assert.ok([...snapshot.values()].every(r=>r.samePeer)); assert.equal(snapshot.get('host').unsafeAudioReplacement,false,'Device recovery must disable a muted microphone BEFORE attaching it to its live sender');
@@ -141,31 +162,70 @@ app.whenReady().then(async () => {
   action('guest','release-capture');await report();assert.ok([...reports.values()].every(r=>r.liveTracks===0));
   action('host','fail-video-start');await wait(()=>reports.get('host')?.state?.audioOnlyOffered,'Camera failure offers explicit audio-only continuation');
   assert.equal(server.coordinator.snapshot,null);action('host','audio-only-start');
-  await wait(()=>server.coordinator.snapshot?.phase==='connected','Explicit audio-only continuation connects');
-  assert.equal(server.coordinator.snapshot.media.host.video,false);await report();assert.equal(reports.get('host').liveTracks,1);
-  action('host','camera');await wait(()=>server.coordinator.snapshot?.media.host.video===true,'Audio-only call can enable camera on its existing sender');
+  await wait(()=>phase()==='connected','Explicit audio-only continuation connects');
+  assert.equal(mediaOf('host').video,false);await report();assert.equal(reports.get('host').liveTracks,1);
+  action('host','camera');await wait(()=>mediaOf('host').video===true,'Audio-only call can enable camera on its existing sender');
   action('host','hangup');await wait(()=>server.coordinator.snapshot===null&&[...reports.values()].every(r=>r.liveTracks===0),'Audio-only call ends cleanly');
   action('host','fail-audio-start');await wait(()=>reports.get('host')?.state?.error?.includes('Microphone unavailable'),'Microphone denial is actionable');
   assert.equal(server.coordinator.snapshot,null);assert.equal(reports.get('host').liveTracks,0);assert.equal(reports.get('host').state.audioOnlyOffered,false);
   for(const role of ['host','guest'])action(role,'reset-reference'); action('guest','start');
-  await wait(()=>server.coordinator.snapshot?.phase==='connected','Second call starts after cancellation with the host still offering');
+  await wait(()=>phase()==='connected','Second call starts after cancellation with the host still offering');
   await wait(()=>reports.get('guest')?.state?.stats?.receivedVideoFrames>0,'Second call receives video before the freeze');
   action('host','freeze-video');await wait(()=>reports.get('guest')?.state?.stale===true,'Media statistics detect frozen video',8000);
   const staleStarted=Date.now();
-  await wait(()=>{assert.ok((server.coordinator.snapshot?.generation??2)<=2,'One frozen-video outage must not cause repeated ICE restarts');return server.coordinator.snapshot===null&&[...reports.values()].every(r=>r.liveTracks===0);},'Frozen video exhausts bounded recovery and releases both captures',35000);
+  await wait(()=>{assert.ok((generation()??2)<=2,'One frozen-video outage must not cause repeated ICE restarts');return server.coordinator.snapshot===null&&[...reports.values()].every(r=>r.liveTracks===0);},'Frozen video exhausts bounded recovery and releases both captures',35000);
   const staleRecoveryMs=Date.now()-staleStarted;
   action('guest','disable-auto-accept'); action('host','start');
-  await wait(()=>server.coordinator.snapshot?.phase==='ringing','Unanswered call rings');
+  await wait(()=>phase()==='ringing','Unanswered call rings');
   const ringStarted=Date.now();
   await wait(()=>server.coordinator.snapshot===null&&[...reports.values()].every(r=>r.liveTracks===0),'Real 60-second ring timeout releases both captured tracks',65000);
   assert.ok(Date.now()-ringStarted>=59000,'The ringing test must use real elapsed time');
+  // Exercise the same renderer/engine at every supported group size.
+  action('guest','enable-auto-accept');
+  for(const role of roles.slice(2)){await makeWindow(role);connect(role);}
+  await wait(()=>ready.size===5&&group.members.every(m=>server.coordinator.isOnline(m.id)),'All five real browser contexts authenticate');
+  const collect=async targets=>{identityReports.clear();for(const role of targets)action(role,'report');await wait(()=>targets.every(role=>identityReports.has(role)),'Collect every mesh endpoint');return new Map(targets.map(role=>[role,identityReports.get(role)]));};
+  const usable=async targets=>{
+    const end=Date.now()+32000;
+    while(true){const rows=await collect(targets);if([...rows.values()].every(r=>r.liveTracks===2&&r.videoCount===targets.length-1&&r.peers.length===targets.length-1&&r.peers.every(p=>p.connection==='connected'&&p.transceivers===2&&p.videoHeight>0&&p.stats.receivedAudioPackets>0&&p.stats.receivedVideoFrames>0&&p.stats.decodedVideoFrames>0)))return rows;assert.ok(Date.now()<end,'Every directed mesh link must deliver actual audio/video');await new Promise(r=>setTimeout(r,100));}
+  };
+  action('host','start',{targetIds:[member('guest').id]});await wait(()=>phase()==='connected','Two-person mesh connects');
+  let meshRows=await usable(roles.slice(0,2));const beforeGrowth=meshRows;
+  for(let count=3;count<=5;count++){
+    action('guest','invite',{targetIds:[member(roles[count-1]).id]});
+    await wait(()=>server.coordinator.snapshot?.pairs.length===count*(count-1)/2&&phase()==='connected',`Grow existing call to ${count}`);
+    meshRows=await usable(roles.slice(0,count));
+    for(const role of ['host','guest']){const original=beforeGrowth.get(role);assert.deepEqual(meshRows.get(role).localTrackIds,original.localTrackIds);assert.equal(meshRows.get(role).acquisitions,original.acquisitions);assert.equal(meshRows.get(role).peers.find(p=>p.id===member(role==='host'?'guest':'host').id).identity,original.peers[0].identity);}
+  }
+  assert.ok([...meshRows.values()].every(r=>r.peers.length===4&&r.videoCount===4));
+  const beforePin=meshRows.get('host');action('host','pin',{participantId:member('guest3').id});meshRows=await usable(roles);
+  assert.deepEqual(meshRows.get('host').peers.map(p=>p.identity),beforePin.peers.map(p=>p.identity));assert.equal(meshRows.get('host').videoCount,4);
+  assert.equal(meshRows.get('host').peers.filter(p=>p.hidden).length,3,'Product CSS must actually hide three unpinned tiles');
+  const pinnedStart=meshRows;await new Promise(resolve=>setTimeout(resolve,6000));meshRows=await collect(roles);
+  for(const [role,row] of meshRows)for(const peer of row.peers){
+    const before=pinnedStart.get(role).peers.find(p=>p.id===peer.id);
+    assert.ok(peer.stats.receivedAudioPackets>before.stats.receivedAudioPackets,'Every audio path must keep progressing while pinned');
+    assert.ok(peer.stats.receivedVideoFrames>before.stats.receivedVideoFrames,'Hidden videos must keep receiving frames');
+    assert.equal(row.state.peers[peer.id].stale,false,'Pinning must not trigger an outage');
+  }
+  action('host','pin');
+  const affected=server.coordinator.snapshot.pairs.find(p=>p.a===member('guest').id&&p.b===member('guest3').id);
+  const healthyGenerations=new Map(server.coordinator.snapshot.pairs.filter(p=>p.id!==affected.id).map(p=>[p.id,p.generation]));
+  action('guest','pause-peer-video',{participantId:member('guest3').id});await wait(()=>server.coordinator.snapshot?.pairs.find(p=>p.id===affected.id)?.generation===2,'One failed guest-to-guest video link restarts independently',15000);
+  for(const p of server.coordinator.snapshot.pairs)if(p.id!==affected.id)assert.equal(p.generation,healthyGenerations.get(p.id));
+  action('guest','resume-peer-video',{participantId:member('guest3').id});await wait(()=>phase()==='connected','Restored pair recovers without replacing healthy connections');meshRows=await usable(roles);
+  action('host','hangup');await wait(()=>server.coordinator.snapshot?.pairs.length===6&&reports.get('host')?.liveTracks===0,'Host leaves media while four guests keep their call');assert.equal(server.coordinator.isOnline(member('host').id),true);await usable(roles.slice(1));
+  action('guest','invite',{targetIds:[member('host').id]});await wait(()=>server.coordinator.snapshot?.pairs.length===10&&phase()==='connected','Fresh invitation rejoins the host');await usable(roles);
+  action('guest5','hangup');await wait(()=>server.coordinator.snapshot?.pairs.length===6,'One guest leaves without ending the group');await usable(roles.slice(0,4));
+  action('guest','invite',{targetIds:[member('guest5').id]});await wait(()=>server.coordinator.snapshot?.pairs.length===10&&phase()==='connected','Fresh invitation rejoins a departed guest');meshRows=await usable(roles);
+  server.coordinator.end('pairing-reset');await wait(()=>roles.every(role=>reports.get(role)?.liveTracks===0),'All five contexts release their shared captures');
   const output=join(root,'out/verification');mkdirSync(output,{recursive:true});
   writeFileSync(join(output,'media-integration.json'),JSON.stringify({timestamp:new Date().toISOString(),durationMs:Date.now()-startedAt,versions:process.versions,architecture:process.arch,
-    generatedMedia:true,singleMac:true,iceServers:[],requestTimeoutMs,staleRecoveryMs,ringTimeoutMs:Date.now()-ringStarted,mediaStatistics,
-    checks:['local camera/microphone check, meter, opt-in monitor, stop, late cancellation, error and retry','real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released'],
+    generatedMedia:true,singleMac:true,iceServers:[],groupSizes:[2,3,4,5],meshEndpoints:[...meshRows].map(([role,r])=>({role,peers:r.peers})),requestTimeoutMs,staleRecoveryMs,ringTimeoutMs:Date.now()-ringStarted,mediaStatistics,
+    checks:['local camera/microphone check, meter, opt-in monitor, stop, late cancellation, error and retry','real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released','two to five participants with all ten bidirectional links','one capture reused during growth','pin preserves all remote streams','isolated guest-to-guest recovery','host media departure and fresh-invitation rejoin'],
     pending:['hardware capture/routing','actual two-Mac/two-network call','native full-screen movie on partner Mac','three-hour session','downloaded installation/update']},null,2)+'\n');
   console.log('MEDIA_TEST_PASS: real local WebRTC, bidirectional audio/video, early ICE, stale generation, persistent peers on resize/reconnect/ICE restart, camera off/on, mute preserved during recovery, outgoing/incoming late capture cancellation, explicit audio-only fallback, microphone denial, second call, real 60-second ring timeout and cleanup. Two-Mac/network/hardware acceptance remains untested.');
-}).catch(error => { console.error('MEDIA_TEST_FAIL:', error.message, JSON.stringify({ phase: server?.coordinator.snapshot?.phase, traffic, reports: [...reports] })); process.exitCode = 1; }).finally(async () => {
+}).catch(error => { console.error('MEDIA_TEST_FAIL:', error.message, JSON.stringify({ phase: phase(), traffic, reports: [...reports] })); process.exitCode = 1; }).finally(async () => {
   for (const client of clients.values()) client.stop(); if (server) await server.close();
   for (const timer of timers)clearTimeout(timer);
   for (const window of windows.values()) window.destroy(); app.exit(process.exitCode || 0);

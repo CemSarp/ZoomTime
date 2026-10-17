@@ -53,3 +53,16 @@ Still pending: deny Screen Recording in the OS, verify no stream starts, explici
 ### Permission correction / Intel retirement follow-up
 
 User reports permission enabled but repeated prompts and capture denied. Actual tccd evidence shows a saved signature mismatch for ZoomTime and denial; old Codex-launched success is not a normal-launch permission pass. Source now preflights, avoids repeating a failed request in one session and provides an explicit fixed Screen Recording settings action with current-copy/restart guidance.96 software tests and native typecheck pass. No new binary was built; verify the revised UI and reauthorization from Applications only after a separately authorized build. Intel is retired, so future physical acceptance targets Apple Silicon/macOS14+ only. Old Intel files/evidence remain historical.
+
+
+## Group-call candidate manual tests — pending executable authorization
+
+Use a future matching group-enabled build on2–5 Apple Silicon Macs with distinct named credentials; existing0.3.4 binaries do not contain this source. Start with two, then invite a third/fourth/fifth while checking the original video/audio continues. Check caller/recipient names, decline/expiry, offline/duplicate/capacity errors, and fresh invitation after leaving. Try guest-initiated calls without host media.
+
+Mute/reacquire devices without any outgoing unmuted replacement; camera off releases hardware. Verify a four-video grid at320×180 and160×90, each pin/return-grid, stable positions during speech, all audio audible exactly once, and no false outage when unpinned videos are hidden. Resize and switch modes without reacquiring tracks/peers.
+
+Have the host Leave while at least two guests continue; installation/retry must remain blocked at the host. Then test actual host quit/sleep/loss and30s bounded cleanup. Test one guest outage without ending healthy other links. Record all ten pairwise routes at five people, actual audio/video,60-minute then3-hour metrics, full-screen overlays and downloaded install/migration. No physical pass is claimed here. Use the [group matrix](superpowers/plans/2026-10-17-group-calling-acceptance.md).
+
+## Experimental group candidate now available — 2026-10-17
+
+Open /Applications/ZoomTime Experimental.app. Use the same candidate on every Mac; the regular/published0.3.4 app is still two-person. Each person uses their own Tailscale identity and member-specific private pairing invitation; every media pair needs connectivity. Call two, then invite a third through fifth; verify ten media links at capacity, pin/unpin and each microphone. Host Leave must preserve remaining guests; host quit must clean up. Record actual results in the group acceptance matrix. Local generated-media/package checks have passed, but none of these real-Mac results is implied. Previous experimental app and exact ZIP/checksum are in HANDOFF.

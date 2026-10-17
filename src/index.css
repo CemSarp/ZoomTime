@@ -29,7 +29,32 @@ body[data-online='true'] .connection-status::before { background: #30a66c; }
 .stage { position: relative; height: clamp(180px, 43vh, 720px); border: 1px solid #ffffff18; border-radius: 14px; overflow: hidden; background: #0b0e14; box-shadow: 0 6px 22px #0000000c; }
 body[data-paired='false']:not([data-mode='mini']) .stage { height: clamp(150px, 25vh, 240px); }
 video { object-fit: contain; background: #0b0e14; }
-#remote { display: block; width: 100%; height: 100%; }
+
+.remote-grid { display: grid; width: 100%; height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 2px; }
+.remote-grid:is([data-count='2'], [data-count='3'], [data-count='4']) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.remote-grid:is([data-count='3'], [data-count='4']) { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.video-tile { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #111827; box-shadow: inset 0 0 0 2px transparent; }
+.video-tile video { width: 100%; height: 100%; display: block; }
+.video-tile:not([data-live='true']) video { visibility: hidden; }
+.video-tile[data-speaking='true'] { outline: 2px solid #40ce84; outline-offset: -2px; }
+.participant-name { position: absolute; left: 5px; bottom: 4px; max-width: calc(100% - 10px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: white; background: #0008; border-radius: 3px; padding: 1px 4px; font-size: 11px; pointer-events: none; }
+.tile-status { position: absolute; inset: 0; display: grid; place-content: center; color: #d6deeb; margin: 0; padding: 5px; text-align: center; font-size: 12px; }
+.pin-person { position: absolute; top: 4px; left: 4px; padding: 2px 5px; min-height: 24px; opacity: 0; -webkit-app-region: no-drag; }
+.video-tile:hover .pin-person, .video-tile:focus-within .pin-person { opacity: 1; }
+.remote-grid[data-pinned='true'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+/* Keep nonfocused media attached and playing, with no duplicate audio element. */
+.remote-grid[data-pinned='true'] .video-tile:not([data-pinned='true']) { position: absolute; width: 1px; height: 1px; opacity: 0; clip-path: inset(50%); pointer-events: none; }
+.call-menu { position: absolute; right: 6px; top: 5px; z-index: 4; color: white; -webkit-app-region: no-drag; }
+.call-menu summary { margin-left: auto; background: #242b39ee; border-radius: 4px; padding: 0 6px; min-height: 20px; }
+.call-menu > div { display: grid; gap: 5px; padding: 8px; background: #242b39; border: 1px solid #63708a; border-radius: 6px; max-height: calc(100vh - 35px); overflow: auto; font-size: 11px; }
+.call-menu select { max-width: 130px; }
+.contact-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0; }
+.contact-row label { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 140px; overflow-wrap: anywhere; }
+.contact-status { color: var(--secondary); font-size: 11px; }
+.contact-row button { padding: 4px 6px; min-height: 28px; font-size: 11px; }
+#member-form { margin-top: 10px; }
+#member-name { min-width: 100px; flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px; }
+
 #empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; text-align: center; color: #e8eaf2; background: radial-gradient(ellipse at 50% 10%, #242d43 0, #131a28 60%, #101620 100%); }
 #empty .avatar { font-size: 42px; color: #a2bcef; margin-bottom: 16px; line-height: 1; }
 #empty h2 { font-size: 19px; letter-spacing: -.02em; }
@@ -104,3 +129,9 @@ body[data-mode='mini'] .stage:hover .mini-controls, body[data-mode='mini'] .stag
 footer { flex-wrap: wrap; row-gap: 8px; padding-bottom: 6px; }
 #screen-sources { display: block; width: 100%; margin: 8px 0 12px; }
 #screen-statistics { overflow: auto; max-height: 180px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+body[data-mode='mini'] #mini-status { right: 37px; }
+body[data-mode='mini'] .participant-name { font-size: 8px; bottom: 2px; left: 2px; }
+body[data-mode='mini'] .tile-status { font-size: 9px; }
+body[data-mode='mini'] .call-menu summary { font-size: 10px; }
+body[data-mode='mini'] .pin-person { font-size: 9px; }

@@ -148,3 +148,14 @@ For later releases: open Settings → Check for updates, review the version/prer
 If the folder is read-only or the app is running from Downloads/a ZIP/disk image/translocation, the installer refuses safely; move the app into a writable Applications folder or use the verified Finder download. No administrator/password helper is included. If macOS blocks the new unnotarized build, follow Apple's supported per-app Open Anyway procedure for the trusted build. Keychain or media permission may be requested again; never disable Gatekeeper or clear quarantine globally.
 
 Old apps are named ZoomTime-previous-VERSION-UUID.app beside the installed app. They and download jobs are retained; they consume space. If a crash/power failure interrupts the short replacement interval and ZoomTime is missing, restore the preserved previous app to ZoomTime.app in Finder. A placement/launch-command failure normally restores it automatically, but normal macOS approval and a healthy restart cannot be guaranteed by the command's return code alone. No archive, backup or profile is deleted automatically.
+
+
+## Group source revision —2026-10-17
+
+The source candidate now supports one private group of up to five named members; published0.3.4 remains two-person and no new build is authorized in this iteration. All Macs must use a future matching protocol-v2 build. Existing encrypted pairings migrate with original-ciphertext backups; do not reset or delete profiles merely to upgrade.
+
+Host: keep your separate Tailscale identity and existing private Serve endpoint; add each named member, then explicitly copy that person's individual invitation for private delivery. Guests: use your own Tailscale identity in the intended tailnet, then paste your own ZoomTime invitation. Tailnet membership and app pairing are different authorizations. Confirm account capacity and narrowly scoped access for all participating pairs; sharing only the host does not provide a guest-to-guest mesh. Never overwrite unrelated Serve entries, enable Funnel or weaken TLS.
+
+Select named recipients and Call. Each invitee chooses Accept or Decline. Joined members can select additional online contacts and Invite. Leave stops only your media while two others remain; rejoin requires a fresh call invitation. The host must keep ZoomTime open even after leaving media. Closing/sleeping the host ends signaling and triggers bounded cleanup. One group call runs at a time. Grid/pin preserves all remote audio; screen transmission remains unsupported.
+
+Follow the [agent implementation ledger](superpowers/plans/2026-10-17-group-calling.md) and [group acceptance matrix](superpowers/plans/2026-10-17-group-calling-acceptance.md). Real2–5-Mac routes, installation/migration, overlays/devices and long-call performance remain pending. Historical two-person steps/results below or above describe their released versions.

@@ -2,14 +2,14 @@
 
 # 🎬 ZoomTime
 
-### *Movie night with someone far away — just the two of you.*
+### *Movie night with your people, even far away.*
 
 A tiny, private video-call window that floats over your full-screen movie,<br>
-so two people on two Macs can watch together and still see each other.
+so your private group can watch together and still see each other.
 
-[![Release](https://img.shields.io/badge/release-v0.3.4_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
+[![Release](https://img.shields.io/badge/release-v0.4.0_prerelease-ff6b6b?style=for-the-badge&logo=github)](https://github.com/CemSarp/ZoomTime/releases/tag/v0.4.0)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-000000?style=for-the-badge&logo=apple&logoColor=white)](#-get-it)
-[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)
+[![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-a259ff?style=for-the-badge)](https://github.com/CemSarp/ZoomTime/releases/download/v0.4.0/ZoomTime-darwin-arm64-0.4.0.zip)
 
 
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
@@ -24,17 +24,18 @@ so two people on two Macs can watch together and still see each other.
 
 </div>
 
-> **v0.3.4 prerelease:** adds independent regular/Mini always-on-top settings, optional experimental speaker echo reduction, and Install and restart for future updates. Upgrading from 0.3.2/0.3.3 still uses one guided Finder replacement to obtain the new installer. See [release notes](docs/releases/v0.3.4.md).
-> **Safari overlay remains under test:** this release includes a macOS panel candidate for Mini disappearing over Safari full screen. Controlled full-screen, regular-window and focus regression checks remain pending; it is not yet a verified fix.
-> **Source branch `codex/screen-capture`:** Intel/Rosetta support is retired. The permission flow now checks existing grants and provides Screen Recording settings recovery for changed app signatures. No new binary/release is being produced for these changes.
-> **Unpublished native capture work:** Settings now includes an explicit local screen-capture diagnostic: display or up to four windows → Metal composition → hardware H.264, with a first-frame PNG. It saves locally and stops when Settings closes. Partner screen transmission and protected-video capture are unsupported. See the [capability matrix and evidence](docs/SCREEN_CAPTURE.md); the published v0.3.4 download does not contain this work.
+> **v0.4.0 prerelease — group calling:** one private group of 2–5 named members, selected recipients, in-call invitations, grid/pin and speaker highlighting. All participants must upgrade together. Requires Apple Silicon and macOS 14+. Physical multi-Mac performance remains under test. [Release notes](docs/releases/v0.4.0.md).
+> **Update inside the app:** open Settings → Check for updates → Download update → Install and restart (0.3.4 or later). Older versions may finish installation in Finder. No background updates.
+> **Known screen-share/screen-capture permission bug:** macOS may repeatedly request Screen Recording access or refuse capture after access is enabled. This remains unresolved. Settings includes recovery guidance, but this release does not claim to fix it. Screen capture is a local diagnostic; partner screen transmission and protected-video capture are not implemented.
+> **Safari overlay remains under test:** controlled Safari/full-screen and focus regression checks remain pending. See the [acceptance matrix](docs/superpowers/plans/2026-10-17-group-calling-acceptance.md).
+
 
 
 ---
 
 ## 💡 What is ZoomTime?
 
-ZoomTime is a **private calling app for exactly two people on two Macs**. Its main job is a small, resizable video window of your partner that **floats on top of everything, including a full-screen movie**.
+ZoomTime supports **private calls for two to five named people on Apple Silicon Macs**. Its main job is a small, resizable video window of your group that **floats on top of everything, including a full-screen movie**.
 
 Each of you plays the movie on your own Mac. ZoomTime only carries your faces and voices, so it feels like sitting on the same couch even when you're in different cities.
 
@@ -70,7 +71,7 @@ Watching a movie "together" over a normal video call quickly becomes awkward:
 | Call windows are big and cover the movie | Mini window shrinks down to **160 × 90** and sits in a corner |
 | Full-screen video hides the call | Mini window **floats over full-screen apps** and Spaces |
 | Minimised call windows can pause or freeze | The **same live call** carries on in normal *and* mini mode |
-| Free plans often cut meetings off after a set time | **No time limit** in the app (it stays on as long as both Macs and the network do) |
+| Free plans often cut meetings off after a set time | **No time limit** in the app (it stays on as long as the host, participants and network do) |
 | Accounts, servers, subscriptions | **No ZoomTime accounts, no servers to rent, no payment** |
 | Your call goes through a company's cloud | Calls stay on **your own private Tailscale network** |
 | Screen sharing the movie lowers quality | Nobody streams the movie. **Each Mac plays it at full quality** |
@@ -130,7 +131,11 @@ Watching a movie "together" over a normal video call quickly becomes awkward:
 
 ## 🧠 How it works
 
-ZoomTime runs on **two Macs and nothing else**. One Mac is the **host**: it runs a small, private "switchboard" that helps the two apps find each other. After that, video and audio go **directly between the two Macs** over WebRTC.
+ZoomTime uses one private group of **up to five Macs**, with one **host** running the private signaling switchboard. Everyone has an individual pairing invitation and sees named contacts. Select who to call; each person explicitly accepts. Participants can invite other paired members while a call is active.
+
+Media uses a full mesh: each Mac captures once and sends directly to every other participant over encrypted WebRTC. Five participants mean four connections per Mac and ten links overall. Every pair needs a usable route; reaching only the host is insufficient. The host can **Leave call** and stop its camera/microphone while keeping ZoomTime open for the remaining guests. Quitting or sleeping the host ends the room. Pairing/quality/Mini controls remain available for two-person calls through the same engine.
+
+The following diagrams show the two-person case. Group media adds direct guest-to-guest links. Screen transmission is deferred; native capture remains local-only.
 
 ```mermaid
 flowchart TB
@@ -226,7 +231,7 @@ flowchart LR
     class I,P,K,C,E,N step
 ```
 
-- 🔐 **Only your two Macs.** Being on the same Tailscale network isn't enough; each app also needs its own random pairing secret.
+- 🔐 **Only your paired group.** Being on the same Tailscale network isn't enough; each app also needs its own random pairing secret.
 - 🗝️ **Secrets never leave the Keychain** as plain text, and they never appear in logs or web addresses.
 - 🧱 **Locked-down app.** Sandboxed pages, a strict content security policy and full TLS certificate checks.
 - 🎙️ **You control the devices.** Mute stops sending your voice, *Camera off* releases the camera, and ending the call releases everything.
@@ -237,10 +242,10 @@ flowchart LR
 
 | Your Mac (Apple menu → About This Mac) | Download |
 | --- | --- |
-| 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.3.4/ZoomTime-darwin-arm64-0.3.4.zip)** |
+| 🍏 Apple chip (M1, M2, M3, M4, M5…) | **[ZoomTime for Apple Silicon (arm64)](https://github.com/CemSarp/ZoomTime/releases/download/v0.4.0/ZoomTime-darwin-arm64-0.4.0.zip)** |
 | Intel processor / Rosetta | **Deprecated.** No future builds or updates; old releases remain in GitHub history. |
 
-New development requires **Apple Silicon (arm64), macOS 14 or later**. Existing v0.3.4 release assets are historical and remain unchanged. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4)
+New development requires **Apple Silicon (arm64), macOS 14 or later**. Historical releases, including v0.3.4, remain unchanged. You don't need Node, Xcode or any developer tools. [All release files and checksums →](https://github.com/CemSarp/ZoomTime/releases/tag/v0.4.0)
 
 > [!NOTE]
 > This is a free, private build. It isn't notarized by Apple, so macOS may ask you to approve it once. Use [Apple's per-app "Open Anyway" steps](https://support.apple.com/en-gb/102445) for the build you downloaded. Never turn Gatekeeper off.
@@ -251,9 +256,9 @@ New development requires **Apple Silicon (arm64), macOS 14 or later**. Existing 
 
 ```mermaid
 flowchart LR
-    S1["1️⃣ Install ZoomTime on both Macs"] --> S2["2️⃣ Join the same Tailscale network, each with your own account"]
-    S2 --> S3["3️⃣ Host Mac: click Host on this Mac, then Copy invitation"]
-    S3 --> S4["4️⃣ Partner Mac: click Paste partner's invitation"]
+    S1["1️⃣ Install 0.4.0 on every participating Mac"] --> S2["2️⃣ Join the same Tailscale network, each with your own account"]
+    S2 --> S3["3️⃣ Host Mac: Host on this Mac, add named members and copy each invitation"]
+    S3 --> S4["4️⃣ Each guest: Paste my invitation"]
     S4 --> R(["✅ Ready to call!"])
 
     style S1 fill:#ffe3e3,stroke:#fa5252,color:#000
@@ -266,9 +271,9 @@ flowchart LR
 **Then, every movie night:**
 
 1. 🎧 Put on headphones so the movie sound doesn't echo back to your partner.
-2. 📞 One of you clicks **Call your partner** and the other clicks **Accept call**.
+2. 📞 Select the people to call and choose **Call**. Each recipient chooses **Accept call**. Joined participants can invite others.
 3. ↘️ Click **Mini window**, put your movie in full screen and press play together.
-4. 👋 Click **End call** when the credits roll.
+4. 👋 Click **Leave call** when done. Keep the host app open if other guests are still talking.
 
 👉 **Full step-by-step walkthrough:** [Setup for you and your partner](docs/NETWORK_SETUP.md)
 
@@ -297,19 +302,20 @@ flowchart LR
     V3 --> V31["0.3.1 · Camera and mic check"]
     V31 --> V32["0.3.2 · Check for updates"]
     V32 --> V33["0.3.3 · Guest pairing fix"]
-    V33 --> V34["0.3.4 · Updates, windows and experimental audio"]:::now
-    V33 --> NEXT["🧪 Real two-Mac movie-night tests"]:::next
+    V33 --> V34["0.3.4 · Updates, windows and experimental audio"]
+    V34 --> V40["0.4.0 · Private group calls"]:::now
+    V40 --> NEXT["🧪 Real multi-Mac movie-night tests"]:::next
 
     classDef now fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:2px
     classDef next fill:#fff,stroke:#868e96,color:#000,stroke-dasharray: 5 5
 ```
 
 > [!IMPORTANT]
-> **v0.3.4 is a prerelease.** An earlier host full-screen test passed, but a later Safari Mini failure prompted this candidate; controlled regression checks remain pending. Local automated checks do not establish physical acceptance. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
+> **v0.4.0 is a prerelease.** An earlier host full-screen test passed, but a later Safari Mini failure prompted this candidate; controlled regression checks remain pending. Local automated checks do not establish physical acceptance. These real-world checks are **still pending**: installing on the partner's Mac, a call between two different home networks and a three-hour movie session. ZoomTime configures no STUN/TURN; Tailscale may use its encrypted DERP relay, and some network combinations may still not connect. See [release acceptance](docs/ACCEPTANCE.md).
 
 ### 🙅 What ZoomTime intentionally doesn't do
 
-No group calls · no chat · no partner screen transmission or movie streaming · no playback sync · no call recording · no analytics · no mobile app · no public servers · no automatic background updates. Local screen diagnostics are an explicit opt-in development feature.
+No chat · no partner screen transmission or movie streaming · no playback sync · no call recording · no analytics · no mobile app · no public servers · no automatic background updates. Local screen diagnostics are an explicit opt-in development feature.
 
 ---
 
@@ -323,7 +329,7 @@ No group calls · no chat · no partner screen transmission or movie streaming �
 | 🏛️ | [Architecture and reasons](docs/ARCHITECTURE.md) | Every design decision and why it was made |
 | ✅ | [Release acceptance](docs/ACCEPTANCE.md) | Real-world tests that must pass before a full release |
 | 🧪 | [Verification](docs/VERIFICATION.md) | Automated and packaged test evidence |
-| 📝 | [Release notes v0.3.4](docs/releases/v0.3.4.md) | What's in the current prerelease |
+| 📝 | [Release notes v0.4.0](docs/releases/v0.4.0.md) | What's in the current prerelease |
 | 🤝 | [Handoff](HANDOFF.md) | Current project status for maintainers |
 
 ### 🔗 References

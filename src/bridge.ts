@@ -1,7 +1,7 @@
 import type { UpdateState } from './updates.ts';
 import type { Preferences } from './preferences.ts';
 import type { Bounds, WindowMode } from './window-state.ts';
-import type { CallingEvent, CallingState, CaptureAction } from './calling-service.ts';
+import type { CallingEvent, CallingState, CaptureAction } from './calling-state.ts';
 import type { ClientMessage } from './protocol.ts';
 import type { CaptureSelection, CaptureSources, ScreenCaptureState } from './screen-capture.ts';
 export interface WindowState {
@@ -39,7 +39,10 @@ export interface ZoomTimeBridge {
   onState(callback: (state: WindowState) => void): () => void;
   getCallingState(): Promise<CallingState>;
   createHost(endpoint: string): Promise<void>;
-  copyInvitation(): Promise<void>;
+  copyInvitation(participantId: string): Promise<void>;
+  addMember(name: string): Promise<void>;
+  renameMember(participantId: string, name: string): Promise<void>;
+  revokeMember(participantId: string): Promise<void>;
   importInvitation(): Promise<void>;
   resetPairing(): Promise<void>;
   retryConnection(): Promise<void>;

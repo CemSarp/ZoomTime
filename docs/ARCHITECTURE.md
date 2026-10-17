@@ -1,6 +1,24 @@
 # ZoomTime project contract
 
-Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separately plays a movie while seeing the partner in a small live video window above other apps, including native full-screen video. No application-imposed call duration limit or paid service.
+Approved 2026-10-13; group-calling revision approved2026-10-17. Audience: one private group of two to five people on Apple Silicon Macs. Each separately plays a movie while seeing the partner in a small live video window above other apps, including native full-screen video. No application-imposed call duration limit or paid service.
+
+## v0.4.0 prerelease publication authorization —2026-10-17
+
+The user subsequently requests source push and release publication with working in-app update discovery/download. Publish protocol-v2 group calling as arm64-only v0.4.0 prerelease, preserving historical builds and the feature-branch workflow. The unresolved screen-share/screen-capture permission bug must be prominent in release/installation notes. No screen transmission, stable-acceptance claim, live tailnet mutation or invitation delivery is authorized.
+
+## Local experimental build authorization —2026-10-17
+
+The user subsequently authorizes an arm64 build and local replacement of ZoomTime Experimental for testing, with its previous bundle preserved. Isolated generated-media/package checks are authorized. This supersedes the source-only build restriction below for that local candidate; regular ZoomTime, release publication, actual pairing invitations and live tailnet configuration remain outside scope. See VERIFICATION.md for observed results; physical mesh acceptance stays pending.
+
+## Group-calling source revision —2026-10-17
+
+The user authorizes source-only implementation of named2–5-person calling in one engine. [Group specification](superpowers/specs/2026-10-17-group-calling-design.md), [implementation ledger](superpowers/plans/2026-10-17-group-calling.md), and [acceptance matrix](superpowers/plans/2026-10-17-group-calling-acceptance.md) define the current contract. Published0.3.4 remains the historical two-person build; no new app/helper build, release or installed replacement is authorized here.
+
+One host-owned five-member encrypted directory, independent random credentials and participant UUIDs; host privilege is separate from joining a call. Anyone selects named online recipients and calls; joined members invite registered contacts. Explicit per-person acceptance, one active call, stable grid/pin/speaker highlight. One shared capture stream feeds at most four isolated WebRTC peers per Mac. Host media Leave retains signaling; host quit/sleep/outage still ends the room. No host failover, public service, STUN/TURN or screen transmission.
+
+Protocol v2 rejects old running builds with update guidance. safeStorage migration preserves legacy credentials and owner-only original-ciphertext backups. All participants must update. Server-assigned pair IDs, deterministic lower-UUID offerers and per-pair generations prevent cross-peer/stale routing. Existing timers become per invitation/pair rather than ending healthy peers. Installation and host Retry remain blocked while coordinating another participant's active call. Native capture/update/security contracts are unchanged. Actual mesh/media/package/physical evidence remains pending until separately authorized and observed.
+
+Historical iteration sections retain the evidence available at their date; this revision takes precedence over two-role/single-peer statements.
 
 ## Decisions and why
 
@@ -11,15 +29,15 @@ Approved 2026-10-13. Audience: exactly two people on their MacBooks. Each separa
 | No native Swift/WebRTC client | Building/integrating the native engine adds work; the user selected Electron. |
 | TypeScript, plain HTML/CSS, maintained Forge Webpack template | Typed boundaries and maintained packaging without an unnecessary UI framework. Forge 8 calls the template `--template=webpack --typescript`. |
 | Apple Silicon (native arm64), macOS 14+ | User revision2026-10-17 retires Intel/Rosetta. Future builds and updates are arm64-only; historical Intel releases stay intact. |
-| One BrowserWindow, renderer, peer connection, and persistent video elements | Mini mode must not reload/reacquire/renegotiate or depend on a large hidden window. |
+| One BrowserWindow, renderer, shared capture stream, per-remote peer connections and persistent video elements | Mini mode must not reload/reacquire/renegotiate or depend on a large hidden window. |
 | Normal 900×600; mini 320×180; minimum mini 160×90 logical pixels | The view must be substantially smaller than FaceTime and freely resizable. Fit video without stretching; do not force an aspect ratio. The normal minimum is 640×420 to keep its instruction/control area usable. |
 | Optional muted self-preview in mini mode; self-preview in normal mode | User revision2026-10-15: let each person choose to see themselves; default mini remains partner-only. Mirroring changes only the local element. A relative preview size follows both modes without duplicating media. |
 | Documented floating/full-screen workspace APIs | Achieve the central window requirement without extreme window levels or repeated focus stealing. |
 | Separate movie playback | No movie streaming, screen sharing, or synchronization subsystem is needed. |
-| Tailscale on both Macs; my Mac hosts signaling while open | No public server, third computer, router forwarding, or paid host. Both apps must run; no offline ringing/push. |
+| Tailscale on every Mac; my Mac hosts signaling while open | No public server, third computer, router forwarding, or paid host. The host app and participating apps must run; no offline ringing/push. |
 | Loopback backend 127.0.0.1:47831; private Serve HTTPS 8443; /zoomtime | Guest WSS uses a validated tailnet hostname and verified TLS. Host uses authenticated local WebSocket. |
 | `iceServers: []`, no STUN/TURN | User explicitly declined relay setup and accepts possible connectivity failure. Never silently add services, SDP address rewriting, insecure Chromium flags, or alternate media transport. |
-| Separate random 32-byte host/guest credentials | Tailnet membership alone does not authorize a call. Authenticated transport determines role. |
+| Separate random 32-byte credentials for every member | Tailnet membership alone does not authorize a call. Authenticated transport determines role. |
 | Main-process safeStorage | Keychain-backed encrypted credential persistence; fail securely when unavailable, never plaintext fallback. |
 | Explicit Call/Accept or local device-check action before camera/mic access | User revision2026-10-15 adds a local pre-call check. Opening the app/Settings must not start capture. Camera off stops/releases its track; mute disables transmitted audio. |
 | Prefer 720p/30 fps, with selectable 360p/24 or1080p/30; normal speech processing | User revision2026-10-15 requests improved detail and quality controls. Ideal constraints allow hardware fallback; applyConstraints updates a live track without replacing the peer. No fixed bitrate/codec is forced; WebRTC adapts to congestion. |
@@ -54,21 +72,15 @@ If the real two-network call cannot connect, stop this version and document the 
 
 ## Pairing and signaling
 
-- Export/import invitation only through an explicit action. It contains a guest endpoint and secret credential; encoding is not encryption. Validate version, role, 32-byte credential shape, and approved `wss://…ts.net:8443/zoomtime` endpoint.
-- Credentials stay out of URLs, routine renderer state, logs, source, and packages.
-- Reset pairing invalidates the old guest and ends any active call.
-- One authenticated connection per role; reject competitors and third clients, do not evict an active call. Single local app instance.
-- Versioned text JSON messages: request/accept/reject/cancel, offer/answer, ICE, media state, hangup, reconnect state, actionable error.
-- Server assigns call ID. Negotiation generation rejects delayed events; identity comes from authentication, never message claims.
-- Maximum 64 KiB/message, no binary payloads or compression, 100 application messages/10 seconds/role.
-- Ring timeout 60 seconds; connect timeout 30 seconds; recovery 30 seconds. An outgoing request without a server call-ID acknowledgement also releases capture after 30 seconds; otherwise lost signaling could strand devices before the ring timer starts.
-- WebSocket heartbeat every 20 seconds; detect two missed replies.
-- Host creates offers regardless of caller. Concurrent matching requests combine into one call.
-- Queue early ICE until the relevant remote description is installed; reject invalid transitions and stale identifiers.
-- Debounce transient media disconnect for five seconds, then one host-led ICE restart per outage.
-- Brief signaling disconnect retains working media during bounded recovery. Expired recovery ends capture.
-- States: unpaired, ready, ringing, connecting, connected, reconnecting, ended, actionable error.
-- Document Tailscale's recommended standalone Mac app, MagicDNS/HTTPS requirements, and grants limited to the two participating devices. Inspect existing Serve configuration before proposing changes; do not reset or overwrite unrelated services or enable Funnel. Host-candidate ICE may require dynamic UDP ports, so signaling-port access alone is insufficient.
+- Explicit member-specific pairing invitation via main-owned clipboard; canonical verified `wss://…ts.net:8443/zoomtime`, random32-byte credential, stable group/host/member UUIDs. Legacy v1 invitations/data migrate, with original ciphertext backup; no v1 call engine.
+- One authenticated connection per registered participant, maximum five including host. Reject duplicate clients without evicting healthy sessions. Secrets never enter renderer state/logs/URLs.
+- Host manages names, credentials and revocation after atomic secure persistence. Any joined member can invite existing online members into the one active call. Invalid/offline recipient sets reject atomically. Nonparticipants see group-busy state without incoming calls/signals.
+- Versioned v2 text JSON, strict keys/UUIDs/SDP/candidate limits. Calls, invitations and peer pairs have independent IDs; every joined membership records the explicit authorized operation UUID. Sender identity comes from authentication, never a client claim.
+- Lower-UUID endpoint offers per pair, including guest-to-guest. Offer/answer ordering and pair generation are authoritative. Healthy pairs are unchanged by another member joining/leaving. Rejoin requires a fresh invitation.
+-64KiB/message, binary/compression denied, bounded buffers. Control100/10s, each authorized pair100/10s, aggregate500/10s per member; reconnect retains budgets. Unknown pair IDs consume control budget.
+- Invitation60s, request acknowledgement30s, permission60s, pair connect30s, outage debounce5s, one ICE restart per pair/outage, recovery30s. Heartbeat20s/two missed replies. Healthy calls have no duration limit.
+- Guest signaling expiry removes only that membership; host expiry ends the room. Delayed snapshots/capture/SDP/ICE cannot restore departed or cancelled memberships. Failed pairs stay explicitly degraded while other links work. Below two participants after a call starts ends the call and releases devices.
+- Separate Tailscale identities and narrowly scoped pairwise grants; signaling8443 alone does not prove guest-to-guest host-candidate ICE routes. No automatic grants/Serve changes, Funnel, TLS bypass or silent fallback. Keep no-TURN physical failure as a release blocker.
 
 ## Window contract
 
@@ -103,24 +115,25 @@ Use headphones for initial tests; echo cancellation cannot guarantee removal of 
 
 ## Exclusions
 
-No group calls, chat, accounts database, call recording, analytics, movie streaming, playback synchronization, mobile apps, contact discovery, public deployment, hosted STUN/TURN, custom codecs/cryptography, or unattended/background updates. Explicit install/restart and local screen diagnostics are user-requested exceptions below.
+No chat, accounts database, call recording, analytics, movie streaming, playback synchronization, mobile apps, contact discovery, public deployment, hosted STUN/TURN, custom codecs/cryptography, or unattended/background updates. Explicit install/restart and local screen diagnostics are user-requested exceptions below.
 
 ## Module ownership and lifecycle reasons
 
 | Module | Responsibility and reason |
 | --- | --- |
 | protocol.ts | Strict, versioned endpoint/invitation/message validation shared by both sides, avoiding inconsistent trust boundaries. |
-| coordinator.ts | Server-assigned call IDs, host-offerer, transitions and deadlines. One authority resolves simultaneous requests and rejects stale negotiations. |
+| coordinator.ts | Server-assigned call/invitation/pair IDs, deterministic pair offerers, transitions and deadlines. One authority resolves simultaneous requests and rejects stale negotiations. |
 | signaling.ts / signaling-client.ts | Main-owned authenticated WebSockets; private loopback binding, limits, heartbeat, TLS checking, reconnect. Credentials never enter the media renderer. |
 | pairing.ts | Atomic safeStorage ciphertext persistence; no plaintext fallback or bundled credentials. A failed reset stops the listener but reports that disk revocation is incomplete. |
-| calling-service.ts | Role/session/capture authorization, pairing/reconnect/revocation and OS interrupts. Cancelled IDs are remembered so delayed snapshots cannot revive them. |
+| calling-state.ts | Browser-safe sanitized state, event and capture-action contracts; no runtime import of main-owned dependencies. |
+| calling-service.ts | Participant/session/capture authorization, pairing/reconnect/revocation and OS interrupts. Cancelled IDs are remembered so delayed snapshots cannot revive them. |
 | main.ts / preload.ts | Single-instance window and OS integration; exact-frame IPC and media permissions. The bridge exposes operations rather than machine-wide capabilities. |
-| media-call.ts | One RTCPeerConnection, capture tracks and persistent views; epoch/generation guards stop late work. The answerer reuses offered transceivers to avoid one-way media. |
-| renderer.ts | Plain UI derived from network/call/media state; one partner video survives all mode changes. |
+| media-call.ts / media-peer.ts | One shared capture and isolated per-peer connections/queues/recovery; epoch/generation guards stop late work. The answerer reuses offered transceivers to avoid one-way media. |
+| renderer.ts / call-view.ts | Named call controls and stable keyed videos, grid/pin/speaker state; elements survive mode changes. |
 
 Permissions are requested after Call/Accept; main grants a limited capture lease before a call ID exists. Local cancellation withdraws it. Active-call camera/device retries require an explicit action. Late capture results are stopped. Camera off stops its track; mute disables audio before any recovered track can reach an active sender. Quit/crash/close/sleep all interrupt the session; wake does not start a new one.
 
-Negotiation messages are serialized and bounded early ICE is queued until the matching remote description. Host generation increases once per outage, while sender/peer identity persists. Working media continues during a brief signaling outage; the 30-second recovery deadline prevents indefinite abandoned sessions. Statistics expose only coarse candidate-route labels, packet/frame counts, rates and RTT, never raw SDP/IP addresses or secrets.
+Negotiation messages are serialized and bounded early ICE is queued until the matching remote description. Each pair generation increases once per outage, while sender/peer identity persists. Working media continues during a brief signaling outage; the 30-second recovery deadline prevents indefinite abandoned sessions. Statistics expose only coarse candidate-route labels, packet/frame counts, rates and RTT, never raw SDP/IP addresses or secrets.
 
 ## Sources
 

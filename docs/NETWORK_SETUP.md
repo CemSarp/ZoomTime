@@ -178,3 +178,14 @@ Stop check or close Settings when finished. The check also stops after two minut
 If you already use restrictive Tailscale access rules, they must allow guest→host TCP8443 and dynamic UDP between the two participating Macs. Review existing grants with the network administrator rather than replacing policies. Granting one signaling port is not enough for WebRTC media. [Grants syntax](https://tailscale.com/docs/reference/syntax/grants)
 
 Tailscale can use its encrypted DERP relay independently of WebRTC TURN. Successful private signaling does not prove which media route works. Physical two-Mac/network, full-screen and long-session tests remain required. No live network settings or invitations were changed/sent by the agent for this walkthrough.
+
+
+## Group network setup —2026-10-17
+
+The source candidate now supports one private group of up to five named members; published0.3.4 remains two-person and no new build is authorized in this iteration. All Macs must use a future matching protocol-v2 build. Existing encrypted pairings migrate with original-ciphertext backups; do not reset or delete profiles merely to upgrade.
+
+Host: keep your separate Tailscale identity and existing private Serve endpoint; add each named member, then explicitly copy that person's individual invitation for private delivery. Guests: use your own Tailscale identity in the intended tailnet, then paste your own ZoomTime invitation. Tailnet membership and app pairing are different authorizations. Confirm account capacity and narrowly scoped access for all participating pairs; sharing only the host does not provide a guest-to-guest mesh. Never overwrite unrelated Serve entries, enable Funnel or weaken TLS.
+
+Select named recipients and Call. Each invitee chooses Accept or Decline. Joined members can select additional online contacts and Invite. Leave stops only your media while two others remain; rejoin requires a fresh call invitation. The host must keep ZoomTime open even after leaving media. Closing/sleeping the host ends signaling and triggers bounded cleanup. One group call runs at a time. Grid/pin preserves all remote audio; screen transmission remains unsupported.
+
+Follow the [agent implementation ledger](superpowers/plans/2026-10-17-group-calling.md) and [group acceptance matrix](superpowers/plans/2026-10-17-group-calling-acceptance.md). Real2–5-Mac routes, installation/migration, overlays/devices and long-call performance remain pending. Historical two-person steps/results below or above describe their released versions.

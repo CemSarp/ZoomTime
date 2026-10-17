@@ -1,3 +1,4 @@
+import { hostFixture, id } from './group-fixtures.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -15,16 +16,16 @@ async function wait(predicate: () => boolean) {
   while (!predicate()) { assert.ok(Date.now() < end, 'Expected real signaling state'); await new Promise(r => setTimeout(r, 10)); }
 }
 test('main-owned client authenticates, validates messages and reconnects after a host restart', async () => {
-  const tokens = { hostToken: randomBytes(32).toString('base64url'), guestToken: randomBytes(32).toString('base64url') };
+  const tokens = hostFixture(2);
   let server = await startSignaling(tokens, 0); const port = server.port;
   const messages: ServerMessage[] = [], statuses: NetworkStatus[] = [];
-  const client = new SignalingClient(`ws://127.0.0.1:${port}/zoomtime`, tokens.guestToken, m => messages.push(m), s => statuses.push(s));
+  const client = new SignalingClient(`ws://127.0.0.1:${port}/zoomtime`, tokens.members[1].token, m => messages.push(m), s => statuses.push(s));
   try {
-    client.start(); await wait(() => messages.some(m => m.type === 'state' && m.role === 'guest'));
-    assert.equal(client.send({ v: 1, type: 'sync' }), true);
+    client.start(); await wait(() => messages.some(m => m.type === 'state' && m.selfId === id(2)));
+    assert.equal(client.send({ v: 2, type: 'sync' }), true);
     await server.close(); await wait(() => statuses.at(-1)?.state === 'offline');
     server = await startSignaling(tokens, port); await wait(() => statuses.at(-1)?.state === 'online');
-    assert.equal(server.coordinator.isOnline('guest'), true);
+    assert.equal(server.coordinator.isOnline(id(2)), true);
   } finally { client.stop(); await server.close(); }
 });
 test('untrusted TLS is rejected before any authenticated WebSocket upgrade', async () => {
@@ -40,7 +41,7 @@ test('untrusted TLS is rejected before any authenticated WebSocket upgrade', asy
   finally {client.stop();server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 test('invalid authentication produces an actionable error without unbounded retries', async () => {
-  const tokens = { hostToken: randomBytes(32).toString('base64url'), guestToken: randomBytes(32).toString('base64url') };
+  const tokens = hostFixture(2);
   const server = await startSignaling(tokens, 0), statuses: NetworkStatus[] = [];
   const client = new SignalingClient(`ws://127.0.0.1:${server.port}/zoomtime`, randomBytes(32).toString('base64url'), () => {}, s => statuses.push(s));
   try { client.start(); await wait(() => statuses.at(-1)?.state === 'error'); assert.match(statuses.at(-1)!.message, /pair/i); }

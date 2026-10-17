@@ -176,7 +176,7 @@ async function createWindow(): Promise<void> {
     await updates.install(async (archive, release) => {
       const ensureIdle = () => {
         if (!app.isPackaged) throw new Error('Install updates from the packaged app in Applications.');
-        if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed || screenCapture.inUse) throw new Error('End your call, device check or screen capture before installing. Your app was not replaced.');
+        if (calling.inUse || screenCapture.inUse) throw new Error('End your call, device check or screen capture before installing. Your app was not replaced.');
       };
       ensureIdle();
       const directory = await prepareInstallation(archive, release, process.execPath, app.getVersion(), process.arch, updateRoot, homedir());
@@ -220,7 +220,10 @@ async function createWindow(): Promise<void> {
   });
   ipcMain.handle('call:state', event => { authorize(event); return calling.state; });
   ipcMain.handle('pairing:host', async (event, endpoint: unknown) => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.createHost(endpoint); });
-  ipcMain.handle('pairing:copy', async event => { authorize(event); await clipboard.writeText(calling.invitation()); });
+  ipcMain.handle('pairing:copy', async (event, id: unknown) => { authorize(event); await clipboard.writeText(calling.invitation(id)); });
+  ipcMain.handle('pairing:add', (event, name: unknown) => { authorize(event); if (setupPending) throw new Error('Wait for host setup.'); calling.addMember(name); });
+  ipcMain.handle('pairing:rename', (event, id: unknown, name: unknown) => { authorize(event); if (setupPending) throw new Error('Wait for host setup.'); calling.renameMember(id, name); });
+  ipcMain.handle('pairing:revoke', (event, id: unknown) => { authorize(event); if (setupPending) throw new Error('Wait for host setup.'); calling.revokeMember(id); });
   ipcMain.handle('pairing:import', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); const invitation = await clipboard.readText(); await openAndConnectTailscale(false); await calling.importInvitation(invitation); });
   ipcMain.handle('pairing:reset', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.reset(); });
   ipcMain.handle('call:retry', async event => { authorize(event); if (setupPending) throw new Error('Wait for host setup to finish.'); await calling.retry(); });
@@ -264,7 +267,7 @@ async function createWindow(): Promise<void> {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
-  window.webContents.on('did-start-loading', () => { void screenCapture.stop(); if (calling.state.call || calling.captureAllowed || calling.deviceCheckAllowed) calling.interrupt('App view reloaded. Start a new call explicitly.'); });
+  window.webContents.on('did-start-loading', () => { void screenCapture.stop(); if (calling.inUse) calling.interrupt('App view reloaded. Start a new call explicitly.'); });
   window.webContents.on('render-process-gone', () => { void screenCapture.stop(); void calling.shutdown(); app.quit(); });
   window.webContents.on('did-fail-load', (_event, _code, _description, _url, isMainFrame) => {
     if (isMainFrame) { dialog.showErrorBox('Window test could not load', 'Restart ZoomTime or rebuild the package.'); app.quit(); }
@@ -284,8 +287,8 @@ async function createWindow(): Promise<void> {
       void screenCapture.stop().finally(() => app.quit());
     }
   });
-  powerMonitor.on('suspend', () => { void screenCapture.stop(); calling.interrupt('Mac went to sleep. Start a new call after waking.'); });
-  powerMonitor.on('resume', () => calling.interrupt('Mac woke up. Start a new call when ready.'));
+  powerMonitor.on('suspend', () => { void screenCapture.stop(); calling.interrupt('Mac went to sleep. Start a new call after waking.', true); });
+  powerMonitor.on('resume', () => calling.interrupt('Mac woke up. Start a new call when ready.', true));
   window.on('closed', () => { clearTimeout(saveTimer); restoreWindow = null; });
   const recoverDisplay = () => {
     if (window.isDestroyed()) return;

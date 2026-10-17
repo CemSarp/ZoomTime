@@ -1,9 +1,9 @@
 {
   "name": "zoomtime",
   "productName": "ZoomTime",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "private": true,
-  "description": "Private two-person Mac calling app",
+  "description": "Private two-to-five-person Mac calling app",
   "keywords": [],
   "license": "UNLICENSED",
   "author": {

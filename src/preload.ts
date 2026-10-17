@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { WindowState, ZoomTimeBridge } from './bridge.ts';
 import type { UpdateState } from './updates.ts';
-import type { CallingEvent } from './calling-service.ts';
+import type { CallingEvent } from './calling-state.ts';
 import type { ScreenCaptureState } from './screen-capture.ts';
 
 const bridge: ZoomTimeBridge = {
@@ -36,7 +36,10 @@ const bridge: ZoomTimeBridge = {
   close: () => ipcRenderer.invoke('window:close'),
   getCallingState: () => ipcRenderer.invoke('call:state'),
   createHost: endpoint => ipcRenderer.invoke('pairing:host', endpoint),
-  copyInvitation: () => ipcRenderer.invoke('pairing:copy'),
+  copyInvitation: id => ipcRenderer.invoke('pairing:copy', id),
+  addMember: name => ipcRenderer.invoke('pairing:add', name),
+  renameMember: (id, name) => ipcRenderer.invoke('pairing:rename', id, name),
+  revokeMember: id => ipcRenderer.invoke('pairing:revoke', id),
   importInvitation: () => ipcRenderer.invoke('pairing:import'),
   resetPairing: () => ipcRenderer.invoke('pairing:reset'),
   retryConnection: () => ipcRenderer.invoke('call:retry'),

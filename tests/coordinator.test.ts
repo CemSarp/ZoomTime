@@ -1,67 +1,113 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Coordinator } from '../src/coordinator.ts';
-import type { ClientMessage, ServerMessage } from '../src/protocol.ts';
-function setup() {
-  const coordinator = new Coordinator();
-  const host: ServerMessage[] = [], guest: ServerMessage[] = [];
-  assert.equal(coordinator.attach('host', message => host.push(message), 0), true);
-  assert.equal(coordinator.attach('guest', message => guest.push(message), 0), true);
-  const send = (role: 'host' | 'guest', type: string, extra = {}, now = 0) => coordinator.receive(role, { v: 1, type, ...extra } as ClientMessage, now);
-  const call = () => { const call = coordinator.snapshot; assert.ok(call); return call; };
-  const negotiate = () => {
-    const base = { callId: call().id, generation: call().generation };
-    send('host', 'description', { ...base, description: { type: 'offer', sdp: 'v=0' } });
-    send('guest', 'description', { ...base, description: { type: 'answer', sdp: 'v=0' } });
-    send('host', 'connected', base); send('guest', 'connected', base);
+import { parseServerMessage, type ClientMessage, type ServerMessage } from '../src/protocol.ts';
+import { hostFixture, id } from './group-fixtures.ts';
+function setup(count = 5) {
+  const host = hostFixture(count), c = new Coordinator(host.groupId, host.hostId, host.members);
+  const inbox = new Map<string, ServerMessage[]>();
+  for (const m of host.members) { inbox.set(m.id, []); assert.ok(c.attach(m.id, message => inbox.get(m.id)!.push(message), 0)); }
+  const send = (n: number, type: string, extra = {}, now = 0) => c.receive(id(n), { v: 2, type, ...extra } as ClientMessage, now);
+  const call = () => { const snapshot = c.snapshot; assert.ok(snapshot); return snapshot; };
+  const accept = (n: number, now = 0) => send(n, 'accept', { callId: call().id, invitationId: call().members.find(m => m.id === id(n))!.invitationId, operationId: id(100 + n) }, now);
+  const request = (n: number, targets: number[], now = 0) => send(n, 'request', { operationId: id(100 + n), targetIds: targets.map(id) }, now);
+  const negotiate = (pairId: string, now = 0) => {
+    const p = call().pairs.find(p => p.id === pairId)!;
+    const base = { callId: call().id, pairId, generation: p.generation };
+    c.receive(p.a, { v: 2, type: 'description', ...base, description: { type: 'offer', sdp: 'v=0' } }, now);
+    c.receive(p.b, { v: 2, type: 'description', ...base, description: { type: 'answer', sdp: 'v=0' } }, now);
+    c.receive(p.a, { v: 2, type: 'connected', ...base }, now); c.receive(p.b, { v: 2, type: 'connected', ...base }, now);
   };
-  return { coordinator, host, guest, send, call, negotiate };
+  return { c, inbox, send, call, accept, request, negotiate, host };
 }
-test('concurrent requests combine into one call with the host as the only offerer', () => {
-  const s = setup(); s.send('guest', 'request'); const id = s.call().id;
-  s.send('host', 'request'); assert.equal(s.call().id, id); assert.equal(s.call().phase, 'connecting');
-  s.send('guest', 'description', { callId: id, generation: 1, description: { type: 'offer', sdp: 'v=0' } });
-  assert.equal(s.guest.at(-1)?.type, 'error');
-  s.negotiate(); assert.equal(s.call().phase, 'connected');
-  s.coordinator.tick(12 * 60 * 60 * 1000); assert.equal(s.call().phase, 'connected', 'Healthy calls have no application time limit');
+test('guest initiation grows from two to five with ten independent pairs and no restart of healthy pairs', () => {
+  const s = setup(); s.request(2, [3]); s.accept(3);
+  assert.equal(s.call().pairs.length, 1); const original = s.call().pairs[0]; s.negotiate(original.id);
+  s.send(3, 'invite', { callId: s.call().id, targetIds: [id(1), id(4), id(5)] });
+  for (const n of [1, 4, 5]) s.accept(n);
+  assert.equal(s.call().pairs.length, 10); assert.deepEqual(s.call().pairs.find(p => p.id === original.id), { ...original, phase: 'connected' });
+  for (const p of s.call().pairs) s.negotiate(p.id);
+  assert.ok(s.call().pairs.every(p => p.phase === 'connected' && p.offererId === p.a && p.a < p.b));
+  s.c.tick(12 * 60 * 60 * 1000); assert.ok(s.c.snapshot, 'No healthy-call duration limit');
 });
-test('stale call IDs and negotiation generations cannot reach the other peer', () => {
-  const s = setup(); s.send('host', 'request'); s.send('guest', 'accept', { callId: s.call().id });
-  const count = s.guest.length;
-  s.send('host', 'ice', { callId: '11111111-1111-4111-8111-111111111111', generation: 1, candidate: null });
-  s.send('host', 'ice', { callId: s.call().id, generation: 99, candidate: null });
-  assert.equal(s.guest.length, count); assert.equal(s.host.at(-1)?.type, 'error');
+test('host or initiator leaving media preserves remaining guest calls and only removes affected pairs', () => {
+  const s = setup(); s.request(1, [2, 3, 4]); for (const n of [2, 3, 4]) s.accept(n);
+  const healthy = s.call().pairs.find(p => p.a === id(2) && p.b === id(3))!;
+  s.negotiate(healthy.id); s.send(1, 'hangup', { callId: s.call().id });
+  assert.equal(s.call().pairs.length, 3); assert.equal(s.c.isOnline(id(1)), true);
+  assert.equal(s.call().pairs.find(p => p.id === healthy.id)?.phase, 'connected');
+  s.send(4, 'hangup', { callId: s.call().id }); assert.equal(s.call().pairs.length, 1);
+  s.send(2, 'hangup', { callId: s.call().id }); assert.equal(s.c.snapshot, null);
 });
-test('duplicate roles cannot evict the existing participant', () => {
-  const s = setup(); assert.equal(s.coordinator.attach('guest', () => assert.fail('competitor received data'), 0), false);
-  assert.equal(s.coordinator.isOnline('guest'), true);
+test('matching simultaneous participant sets converge and unrelated requests are busy', () => {
+  const s = setup(); s.request(2, [3]); const callId = s.call().id;
+  s.request(3, [2]); assert.equal(s.call().id, callId); assert.equal(s.call().pairs.length, 1);
+  s.request(4, [5]); assert.equal(s.inbox.get(id(4))!.at(-1)?.type, 'error');
+  assert.equal(s.call().members.length, 2);
 });
-test('duplicate connected acknowledgements do not cause a signaling feedback loop', () => {
-  const s = setup(); s.send('host', 'request'); s.send('guest', 'accept', { callId: s.call().id }); s.negotiate();
-  s.coordinator.detach('guest', 1000); const count = s.host.length;
-  s.send('host', 'connected', { callId: s.call().id, generation: 1 }, 1001);
-  assert.equal(s.host.length, count, 'An already connected role must not rebroadcast the same recovery state');
+test('offline, self, duplicate and unknown targets cannot create or expand a call', () => {
+  const s = setup(); s.c.detach(id(5), 0);
+  for (const targets of [[1], [2, 2], [6], [5]]) { s.request(1, targets); assert.equal(s.c.snapshot, null); }
+  s.request(1, [2]); s.accept(2); s.send(1, 'invite', { callId: s.call().id, targetIds: [id(3), id(5)] });
+  assert.equal(s.call().members.length, 2);
 });
-test('ring and initial connection timeouts end calls exactly once', () => {
-  const s = setup(); s.send('host', 'request'); s.coordinator.tick(59_999); assert.equal(s.call().phase, 'ringing');
-  s.coordinator.tick(60_000); assert.equal(s.coordinator.snapshot, null); assert.equal(s.host.at(-2)?.type, 'ended');
-  const ended = s.host.filter(m => m.type === 'ended').length; s.coordinator.tick(90_000); assert.equal(s.host.filter(m => m.type === 'ended').length, ended);
-  s.send('host', 'request', {}, 100_000); s.send('guest', 'accept', { callId: s.call().id }, 100_000);
-  s.coordinator.tick(130_000); assert.equal(s.coordinator.snapshot, null);
+test('decline, expiry and stale invitations affect only their recipients; rejoin needs a fresh invitation', () => {
+  const s = setup(); s.request(1, [2, 3]); const stale = s.call().members.find(m => m.id === id(3))!.invitationId;
+  s.accept(2); s.negotiate(s.call().pairs[0].id); s.send(3, 'reject', { callId: s.call().id, invitationId: stale });
+  assert.equal(s.call().members.find(m => m.id === id(3))?.status, 'declined');
+  s.send(1, 'invite', { callId: s.call().id, targetIds: [id(3)] }, 100);
+  s.send(3, 'accept', { callId: s.call().id, invitationId: stale, operationId: id(103) });
+  assert.equal(s.call().pairs.length, 1); s.c.tick(60_100);
+  assert.equal(s.call().members.find(m => m.id === id(3))?.status, 'expired');
+  s.send(1, 'invite', { callId: s.call().id, targetIds: [id(3)] }, 60_101); s.accept(3, 60_102);
+  assert.equal(s.call().pairs.length, 3);
 });
-test('signaling resumes the same call and allows one ICE restart per outage', () => {
-  const s = setup(); s.send('host', 'request'); s.send('guest', 'accept', { callId: s.call().id }); s.negotiate();
-  const id = s.call().id; s.coordinator.detach('guest', 1000); assert.equal(s.call().phase, 'reconnecting');
-  s.coordinator.attach('guest', m => s.guest.push(m), 2000); assert.equal(s.call().id, id);
-  s.send('guest', 'recover', { callId: id }, 6000); const gen = s.call().generation;
-  assert.equal(gen, 2); s.send('host', 'recover', { callId: id }, 6001); assert.equal(s.call().generation, gen);
-  s.negotiate(); assert.equal(s.call().phase, 'connected');
-  s.coordinator.detach('guest', 10_000); s.coordinator.tick(40_000); assert.equal(s.coordinator.snapshot, null);
+test('only authenticated endpoints route current negotiation, and offerer is deterministic for guest pairs', () => {
+  const s = setup(); s.request(2, [3]); s.accept(3); const p = s.call().pairs[0], base = { callId: s.call().id, pairId: p.id, generation: 1 };
+  const count = s.inbox.get(id(3))!.length;
+  s.send(4, 'ice', { ...base, candidate: null }); s.send(2, 'ice', { ...base, generation: 99, candidate: null });
+  s.send(3, 'description', { ...base, description: { type: 'offer', sdp: 'v=0' } });
+  assert.equal(s.inbox.get(id(3))!.length, count + 1, 'Only the wrong-offerer error reaches that guest');
+  s.send(2, 'ice', { ...base, candidate: null }); const routed = s.inbox.get(id(3))!.at(-1);
+  assert.ok(routed?.type === 'ice'); assert.equal(routed.fromId, id(2));
 });
-test('cancel, reject and reset release the active session and cannot resurrect it', () => {
-  for (const reason of ['cancel', 'reject', 'reset']) {
-    const s = setup(); s.send('host', 'request'); const id = s.call().id;
-    if (reason === 'reset') s.coordinator.end('pairing-reset'); else s.send(reason === 'cancel' ? 'host' : 'guest', reason, { callId: id });
-    assert.equal(s.coordinator.snapshot, null); s.send('guest', 'accept', { callId: id }); assert.equal(s.coordinator.snapshot, null);
+test('pair recovery restarts once, remains isolated and duplicate acknowledgements do not loop', () => {
+  const s = setup(); s.request(1, [2, 3]); s.accept(2); s.accept(3); for (const p of s.call().pairs) s.negotiate(p.id);
+  const p = s.call().pairs[0], other = s.call().pairs[2];
+  const base = { callId: s.call().id, pairId: p.id, generation: 1 };
+  s.send(1, 'recover', base, 100); s.send(2, 'recover', { ...base, generation: 2 }, 101);
+  assert.equal(s.call().pairs[0].generation, 2); assert.deepEqual(s.call().pairs[2], other);
+  s.negotiate(p.id, 102); const count = s.inbox.get(id(1))!.length;
+  s.send(1, 'connected', { ...base, generation: 2 }, 103); assert.equal(s.inbox.get(id(1))!.length, count);
+});
+test('guest signaling expiry removes only that guest; host signaling expiry ends remaining media', () => {
+  const s = setup(); s.request(2, [3, 4]); s.accept(3); s.accept(4); for (const p of s.call().pairs) s.negotiate(p.id);
+  s.c.detach(id(4), 100); s.c.tick(30_100); assert.equal(s.call().pairs.length, 1);
+  s.c.detach(id(1), 30_101); s.c.tick(60_101); assert.equal(s.c.snapshot, null);
+});
+test('ring and pair connect deadlines are bounded and terminal cleanup is idempotent', () => {
+  const s = setup(); s.request(1, [2]); s.c.tick(59_999); assert.ok(s.c.snapshot); s.c.tick(60_000); assert.equal(s.c.snapshot, null);
+  s.request(1, [2], 70_000); s.accept(2, 70_000); s.c.tick(100_000); assert.equal(s.c.snapshot, null);
+  const ended = s.inbox.get(id(1))!.filter(m => m.type === 'ended').length; s.c.end('pairing-reset'); assert.equal(s.inbox.get(id(1))!.filter(m => m.type === 'ended').length, ended);
+});
+test('duplicate connections cannot evict a member and revoked members lose only their participation', () => {
+  const s = setup(); assert.equal(s.c.attach(id(2), () => assert.fail(), 0), false);
+  s.request(1, [2, 3]); s.accept(2); s.accept(3); s.c.updateMembers(s.host.members.filter(m => m.id !== id(3)), 1);
+  assert.equal(s.call().pairs.length, 1); assert.equal(s.c.isOnline(id(3)), false);
+});
+test('reattachment at an expired deadline cannot revive an old membership', () => {
+  const s=setup(2);s.request(1,[2]);s.accept(2);s.negotiate(s.call().pairs[0].id);
+  s.c.detach(id(2),100);s.c.attach(id(2),m=>s.inbox.get(id(2))!.push(m),30_100);
+  assert.equal(s.c.snapshot,null,'Attach must enforce elapsed recovery before deleting its deadline');
+});
+test('revoking the original guest inviter preserves parseable snapshots and healthy links', () => {
+  const s=setup(5);s.request(2,[1,3,4,5]);for(const n of [1,3,4])s.accept(n);
+  const retained=s.call().pairs.find(p=>p.a===id(3)&&p.b===id(4))!;s.negotiate(retained.id);
+  s.c.updateMembers(s.host.members.filter(m=>m.id!==id(2)),1);
+  for(const n of [1,3,4,5]){
+    const message=s.inbox.get(id(n))!.at(-1)!;
+    assert.equal(message.type,'state');assert.ok(parseServerMessage(message),`Member ${n} must not lose signaling after inviter revocation`);
   }
+  assert.equal(s.call().pairs.find(p=>p.id===retained.id)?.phase,'connected');
+  s.accept(5,2);assert.equal(s.call().pairs.length,6,'A still-current invitation remains usable after its inviter leaves');
 });
