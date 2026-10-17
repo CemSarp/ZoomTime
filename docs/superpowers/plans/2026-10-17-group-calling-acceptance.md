@@ -33,3 +33,7 @@ The user subsequently authorized the local experimental build and isolated check
 Record tester/date, revision/digest, Mac/OS, actual networks/player/devices, per-pair redacted route, duration/metrics/results. Keep names/addresses/credentials/raw SDP out of shared evidence. Signaling reachability does not prove mesh media reachability. An actual no-TURN failure blocks release; no silent fallback.
 
 Actual group active-speaker visual accuracy, real hardware permissions and legacy safeStorage migration remain physical checks. The packaged smoke tests fresh pairing/retry with real safeStorage, not the user profile.
+
+## v0.4.0 prerelease publication evidence
+
+125/125 unit tests and full source checks pass; the new version adds a focused arm640.3.4→0.4.0 prerelease/no-equal-version regression. Fresh0.4.0 build, generated-media2–5-client suite and28 packaged checks at each Mini size pass. GitHub publishes all four checksum-matched assets. Anonymous discovery and actual0.3.4 Settings Check/Download reach Ready with matching bytes/quarantine; Install/restart and real-profile migration remain pending. This is explicitly authorized prerelease distribution, not physical acceptance. Screen Recording permission bug remains disclosed/unresolved.

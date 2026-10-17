@@ -41,3 +41,7 @@ Install this updater-enabled candidate once using the previous guided flow. Futu
 ## Group-calling revision — source-only candidate
 
 The user approved one private named2–5-member group on2026-10-17. Existing two-Mac evidence does not establish five-person behavior. All new executable/physical group gates remain pending: actual2/3/4/5 Macs and every guest-to-guest media link; one-capture growth; host media Leave while guests continue; independent outage recovery; grid/pin/speaker/compact controls; downloaded install and credential-preserving encrypted migration;60-minute then3-hour group resource/thermal measurements. Host quit/sleep remains a call-ending condition. Follow the [detailed group matrix](superpowers/plans/2026-10-17-group-calling-acceptance.md). No app/helper build, package/GUI/media run, installation or publication was performed for this source-only change.
+
+## v0.4.0 explicit prerelease distribution —2026-10-17
+
+The user authorized publication before physical acceptance. Source commit/tag and observed evidence are in VERIFICATION and the group matrix. New arm64 build, local2–5-client generated WebRTC and packaged28-check runs at each Mini size pass; actual0.3.4 in-app download reaches Ready with verified checksum/quarantine. Actual installed restart, real-profile migration and all multi-Mac/network/hardware/long-session gates remain pending. Screen Recording permission remains a known unresolved bug. Published prerelease status does not mark these gates passed.
