@@ -14,7 +14,7 @@ export function setupScreenCapture(): void {
     get<HTMLButtonElement>('screen-request').disabled = state.busy || discovering;
     get<HTMLButtonElement>('screen-refresh').disabled = state.busy || discovering;
     get<HTMLButtonElement>('screen-reveal').hidden = !state.canReveal;
-    get('screen-status').textContent = state.message;
+    if (get('screen-status').textContent !== state.message) get('screen-status').textContent = state.message;
     get('screen-statistics').textContent = state.statistics ? JSON.stringify(state.statistics, null, 2) : '';
   }
   function populate(): void {

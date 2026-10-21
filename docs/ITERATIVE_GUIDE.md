@@ -1,5 +1,25 @@
 # Iterative implementation guide
 
+## v0.5.0 publication revision —2026-10-21
+
+The user explicitly requested pushing the completed changes and publishing v0.5.0 as a GitHub prerelease, updating the default-branch README, installation/update guidance and release notes. This supersedes earlier iteration-specific no-publication statements. Use a clean source commit, annotated tag and freshly signed arm64 artifacts; retain historical bundles and profiles. The first persistent-identity migration has a full ZIP and signed native feed, with no delta from older ad-hoc builds. Later compatible signed releases can use verified deltas and full fallback.
+
+Fresh publication checks:151 unit tests, generated2–5-client media,8 renderer scenarios, pinned signing fixtures, typecheck/lint and diff checks pass. Native installation fixtures and final packaged artifacts are being verified; final publication evidence follows separately. The occupied-host packaged group remains pending by user choice. Screen Recording permission recovery remains a known bug; real two-Mac permission continuity, network/acoustic and long-session acceptance remain pending. Publication does not replace installed apps or reset trust/TCC. See [release notes](releases/v0.5.0.md).
+
+## Live speaker echo revision —2026-10-21
+
+Follow [the live-switching ledger](superpowers/plans/2026-10-21-live-speaker-echo.md). Preserve the current call/camera/peer/mute/gain identities, real authorization leases/deadlines, rollback and immediate cancellation cleanup. Verify the actual reported processing mode, not successful constraint calls alone. Keep acoustic/permission evidence pending despite removal of the Experimental label. The authorized testing copy may be updated with its predecessor preserved; no publication automatically follows.
+
+
+## 0.5.0 UI refinement —2026-10-21
+
+Use [the UI ledger](superpowers/plans/2026-10-21-ui-refinement.md) and [complete control review](UI_UX_REVIEW.md). Run source checks, `npm run test:ui`, generated group-media regressions and a fresh signed build/package UI check. Preserve accessible labels, focus, minimum sizes, media identity and existing security/session guards. Retain every unavailable physical gate and any intermittent native result; do not publish/install over user apps as part of this pass.
+
+
+## 0.5.0 incremental update iteration —2026-10-18
+
+Execute [the approved ledger](superpowers/plans/2026-10-18-incremental-updater.md) sequentially. Prove same-certificate signing and native A→B→C before adopting native updates. Retain strict transport, verification, explicit actions, active-session restart guards, exact signed bases and backups. Test delta byte savings, full fallback, corrupt/wrong-identity rejection, paths, cancellation and recovery. Retain independent physical permission/group gates. Do not publish this candidate or replace installed apps as part of this iteration.
+
 Every phase reads ARCHITECTURE.md, AGENTS.md, and HANDOFF.md. Preserve decisions and their reasons, locked dependencies, focused tests, and actual verification evidence. Report changes, commands/results, pending physical evidence, risks, and next prerequisites. The user explicitly authorized continued software implementation on 2026-10-14 after their own-Mac full-screen success. Physical gates now block release acceptance; unavailable evidence must stay pending. An observed cross-network failure still blocks this no-TURN version.
 
 ## 0 — Contract

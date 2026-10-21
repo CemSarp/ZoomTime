@@ -4,6 +4,7 @@ import { DeviceCheck } from './device-check.ts';
 import { setupScreenCapture } from './screen-capture-ui.ts';
 import { MediaCall } from './media-call.ts';
 import { GroupVideoView } from './call-view.ts';
+import { renderMediaButton } from './call-controls.ts';
 import { emptyCallingState, type StartCall, type CallingState } from './calling-state.ts';
 import type { UpdateState } from './updates.ts';
 import type { WindowState } from './bridge.ts';
@@ -11,11 +12,14 @@ const link = document.createElement('link'); link.rel = 'stylesheet'; link.href 
 const element = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const show = (id: string, visible: boolean) => { element(id).hidden = !visible; };
 const disabled = (id: string, value: boolean) => { element<HTMLButtonElement>(id).disabled = value; };
+const setText = (id: string, value: string) => { if (element(id).textContent !== value) element(id).textContent = value; };
 const rendererSession = crypto.randomUUID(); document.body.dataset.rendererSession = rendererSession; element('session').textContent = rendererSession.slice(0, 8);
 const startedAt = Date.now(); let connectedAt: number | null = null;
 let windowState: WindowState | null = null;
 let preferences = decodePreferences(null);
 let settingsBusy = false;
+let outputVolumeDraft: number | null = null;
+let speakerEchoDraft: boolean | null = null;
 let resizingPreview = false;
 let preferencesTimer: ReturnType<typeof setTimeout> | undefined;
 const settings = element<HTMLDialogElement>('settings');
@@ -27,10 +31,10 @@ let renamingId: string | null = null;
 const renameDialog = element<HTMLDialogElement>('rename-member');
 let action: StartCall | null = null; let setupBusy = false; let uiError = '';
 const local = element<HTMLVideoElement>('local');
-const videos = new GroupVideoView(element('remote-grid'), element<HTMLSelectElement>('focus-person'), () => render());
+const videos = new GroupVideoView(element('remote-grid'), element<HTMLSelectElement>('focus-person'), () => render(), element('participant-volumes'));
 const media = new MediaCall(window.zoomtime, { local, remote: id => videos.remote(id), removeRemote: id => videos.remove(id), changed: () => render() });
 const check = new DeviceCheck(window.zoomtime, element<HTMLVideoElement>('check-video'), () => renderCheck());
-function error(error: unknown): void { uiError = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'That action failed. Check the connection and retry.'; render(); }
+function error(error: unknown): void { uiError = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'That action failed. Check the connection and retry.'; if (settings.open) { setText('settings-error', uiError); show('settings-error', true); } render(); }
 function run(operation: () => Promise<unknown>): void { uiError = ''; void operation().catch(error); }
 async function setup(operation: () => Promise<void>): Promise<void> {
   if (setupBusy) return; setupBusy = true; uiError = ''; render();
@@ -38,20 +42,28 @@ async function setup(operation: () => Promise<void>): Promise<void> {
 }
 function applyWindow(state: WindowState): void {
   windowState = state; document.body.dataset.mode = state.mode;
-  if (state.mode === 'mini' && settings.open) settings.close();
+  if (state.mode === 'mini') { if (settings.open) settings.close(); if (renameDialog.open) renameDialog.close(); }
   const changedQuality = preferences.quality !== state.preferences.quality;
+  const changedEcho = preferences.speakerEchoReduction !== state.preferences.speakerEchoReduction;
   preferences = state.preferences;
-  media.setSpeakerEchoReduction(preferences.speakerEchoReduction);
+  if (changedEcho) {
+    void media.setSpeakerEchoReduction(preferences.speakerEchoReduction).catch(error);
+    void check.setSpeakerEchoReduction(preferences.speakerEchoReduction).catch(error);
+  }
   applyPreferences();
   if (changedQuality) void media.setQuality(preferences.quality).catch(error);
   element('size').textContent = `${state.bounds.width} × ${state.bounds.height}`; show('preferences', state.preferencesError);
 }
 function applyPreferences(): void {
+  const outputVolume = outputVolumeDraft ?? preferences.outputVolume;
+  videos.setOutputVolume(outputVolume);
+  element<HTMLInputElement>('output-volume').value = String(outputVolume);
+  element('output-volume-value').textContent = `${outputVolume}%`;
   document.body.dataset.mirror = String(preferences.mirror);
   document.body.dataset.miniSelf = String(preferences.miniSelf);
   element<HTMLInputElement>('normal-always-on-top').checked = preferences.normalAlwaysOnTop;
   element<HTMLInputElement>('mini-always-on-top').checked = preferences.miniAlwaysOnTop;
-  element<HTMLInputElement>('speaker-echo-reduction').checked = preferences.speakerEchoReduction;
+  element<HTMLInputElement>('speaker-echo-reduction').checked = speakerEchoDraft ?? preferences.speakerEchoReduction;
   element<HTMLInputElement>('mirror').checked = preferences.mirror;
   element<HTMLInputElement>('mini-self-setting').checked = preferences.miniSelf;
   element<HTMLSelectElement>('quality').value = preferences.quality;
@@ -60,22 +72,26 @@ function applyPreferences(): void {
   selfPreview.style.width = `${preferences.previewSize}%`;
   element('mini-self').setAttribute('aria-pressed', String(preferences.miniSelf));
   element('mini-self').setAttribute('aria-label', preferences.miniSelf ? 'Hide your camera preview' : 'Show your camera preview');
+  element('mini-self').title = preferences.miniSelf ? 'Hide your camera preview' : 'Show your camera preview';
 }
 async function updatePreferences(patch: Partial<Preferences>): Promise<void> {
   if (settingsBusy) { applyPreferences(); return; }
   clearTimeout(preferencesTimer);
   const next = { ...preferences, ...patch };
   settingsBusy = true;
-  for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self', 'normal-always-on-top', 'mini-always-on-top', 'speaker-echo-reduction']) (element(id) as HTMLInputElement).disabled = true;
+  for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self', 'normal-always-on-top', 'mini-always-on-top', 'speaker-echo-reduction', 'output-volume']) (element(id) as HTMLInputElement).disabled = true;
   show('settings-error', false);
   try {
     await media.setQuality(next.quality);
+    await media.setSpeakerEchoReduction(next.speakerEchoReduction);
+    await check.setSpeakerEchoReduction(next.speakerEchoReduction);
     applyWindow(await window.zoomtime.setPreferences(next));
   } catch (cause) {
+    await Promise.allSettled([media.setSpeakerEchoReduction(preferences.speakerEchoReduction), check.setSpeakerEchoReduction(preferences.speakerEchoReduction)]);
     applyPreferences(); error(cause); element('settings-error').textContent = uiError; show('settings-error', true);
   } finally {
     settingsBusy = false;
-    for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self', 'normal-always-on-top', 'mini-always-on-top', 'speaker-echo-reduction']) (element(id) as HTMLInputElement).disabled = false;
+    for (const id of ['quality', 'mirror', 'mini-self-setting', 'preview-size', 'mini-self', 'normal-always-on-top', 'mini-always-on-top', 'speaker-echo-reduction', 'output-volume']) (element(id) as HTMLInputElement).disabled = false;
     renderCheck();
   }
 }
@@ -85,14 +101,15 @@ function renderSpeakerEcho(): void {
   const activeStatus = {
     all: 'System-audio cancellation applied. Acoustic results still depend on your speakers and room.',
     unavailable: 'Unavailable on this microphone/runtime. Standard call echo cancellation continues.',
-    standard: 'Standard call echo cancellation active. Changes apply to your next microphone session.',
+    standard: 'Off. Standard call echo cancellation stays enabled.',
   };
-  element('speaker-echo-status').textContent = usingMicrophone ? activeStatus[status] : preferences.speakerEchoReduction
-    ? 'Enabled for your next call or device check.' : 'Off. Standard call echo cancellation stays enabled.';
+  setText('speaker-echo-status', usingMicrophone ? activeStatus[status] : preferences.speakerEchoReduction
+    ? 'On for calls and device checks. You can change this during a call.' : activeStatus.standard);
 }
 function renderCheck(): void {
   renderSpeakerEcho();
   const state = check.state, busy = state.active || state.capturing;
+  disabled('speaker-echo-reduction', settingsBusy || state.capturing || media.state.capturing);
   disabled('check-start', !!calling.call || media.state.capturing || !!local.srcObject || busy);
   show('check-start', !busy); show('check-stop', busy); show('check-video', state.active); show('check-audio', state.active);
   element<HTMLInputElement>('check-listen').disabled = !state.active;
@@ -108,9 +125,9 @@ function applyUpdate(state: UpdateState): void {
   element('update-status').textContent = state.message;
   if (state.status === 'checking' && settings.open) element('updates-title').scrollIntoView({ block: 'start' });
   const busy = state.status === 'checking' || state.status === 'downloading' || state.status === 'installing';
-  disabled('update-check', busy);
+  disabled('update-check', busy || state.status === 'ready');
   show('update-download', state.status === 'available');
-  show('update-reveal', state.status === 'ready' || state.canReveal === true);
+  show('update-reveal', state.canReveal === true);
   show('update-install', state.status === 'ready');
   show('update-progress', state.status === 'downloading');
   element<HTMLProgressElement>('update-progress').value = state.percent ?? 0;
@@ -138,7 +155,7 @@ function renderContacts(): void {
         const button = (text: string, operation: () => Promise<void>) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.addEventListener('click', () => { void setup(operation); }); actions.push(b); root.append(b); };
         if (member.id !== calling.selfId) button('Copy invitation', async () => { await window.zoomtime.copyInvitation(member.id); element('toast').textContent = 'Invitation copied. It contains a secret; share it privately with this person only.'; });
         button('Rename', async () => { renamingId = member.id; element<HTMLInputElement>('rename-name').value = calling.members.find(m => m.id === member.id)?.name ?? ''; renameDialog.showModal(); });
-        if (member.id !== calling.selfId) button('Revoke', async () => { if (confirm(`Revoke ${calling.members.find(m => m.id === member.id)?.name ?? 'this member'} and remove them from the call?`)) await window.zoomtime.revokeMember(member.id); });
+        if (member.id !== calling.selfId) button('Revoke…', async () => { if (confirm(`Revoke ${calling.members.find(m => m.id === member.id)?.name ?? 'this member'} and remove them from the call?`)) await window.zoomtime.revokeMember(member.id); });
       }
       element('contacts').append(root); row = { root, input, name, status, actions }; contactRows.set(member.id, row);
     }
@@ -149,7 +166,7 @@ function renderContacts(): void {
     row.name.textContent = `${member.name}${own ? ' · You' : ''}${member.id === calling.hostId ? ' · Host' : ''}`;
     row.input.setAttribute('aria-label', `Select ${member.name}`);
     row.status.textContent = !member.online ? 'Offline' : membership?.status === 'joined' ? 'Joined' : membership?.status === 'invited' ? 'Invited' : membership?.status === 'declined' ? 'Declined' : membership?.status === 'expired' ? 'Invitation expired' : membership?.status === 'left' ? 'Left' : 'Online';
-    for (const button of row.actions) button.disabled = setupBusy;
+    for (const button of row.actions) { button.disabled = setupBusy; button.setAttribute('aria-label', `${button.textContent?.replace('…', '')} · ${member.name}`); }
   }
   disabled('add-member', setupBusy || calling.members.length >= 5);
 }
@@ -166,11 +183,12 @@ function render(): void {
     incoming ? `Incoming call from ${memberNames([call!.callerId])}` : outgoing ? `Calling ${memberNames(call!.members.filter(m => m.status === 'invited').map(m => m.id))}…` : reconnecting ? 'Signaling reconnecting…' : state.connection === 'connected' ? 'Connected' : state.connection === 'degraded' ? 'Some connections interrupted' : 'Connecting media…';
   if (state.capturing) status = 'Waiting for camera/microphone…';
   document.body.dataset.paired = String(!!calling.role); document.body.dataset.online = String(calling.network.state === 'online');
-  element('status').textContent = status; element('mini-status').textContent = status;
+  setText('status', status);
   show('onboarding', !calling.role); show('paired', !!calling.role || !!calling.error);
   element('pairing-status').textContent = calling.role === 'host' ? 'This Mac hosts your private group. Keep ZoomTime open for others after leaving a call.' : calling.role === 'guest' ? 'Paired with your private group.' : 'Secure pairing needs recovery.';
   for (const id of ['host', 'manual-host', 'import', 'reset']) disabled(id, setupBusy);
   disabled('retry', setupBusy || calling.role === 'host' && calling.busy);
+  show('retry', calling.network.state !== 'online');
   element('host').textContent = setupBusy ? 'Setting up…' : 'Host on this Mac';
   show('call', !call && !state.capturing && !localActive); disabled('call', !ready || state.capturing); element('call').textContent = names ? `Call ${names}` : 'Select people to call';
   show('invite-members', !!active); disabled('invite-members', !targets.length || state.capturing); element('invite-members').textContent = names ? `Invite ${names}` : 'Select people to invite';
@@ -178,19 +196,21 @@ function render(): void {
   for (const id of ['mute', 'camera', 'hangup']) show(id, !!active && !outgoing);
   for (const id of ['mute', 'camera', 'mini-mute', 'mini-camera']) disabled(id, !localActive || state.capturing);
   for (const id of ['mute', 'mini-mute']) {
-    const button = element<HTMLButtonElement>(id), label = state.muted ? 'Unmute microphone' : 'Mute microphone'; button.title = label; button.setAttribute('aria-label', label); button.setAttribute('aria-pressed', String(state.muted)); button.textContent = id === 'mute' ? label : state.muted ? 'Muted' : 'Mic';
+    renderMediaButton(element<HTMLButtonElement>(id), 'microphone', state.muted);
   }
   for (const id of ['camera', 'mini-camera']) {
-    const button = element<HTMLButtonElement>(id), label = state.cameraOn ? 'Turn camera off' : 'Turn camera on'; button.title = label; button.setAttribute('aria-label', label); button.setAttribute('aria-pressed', String(!state.cameraOn)); button.textContent = id === 'camera' ? label : state.cameraOn ? 'Cam' : 'Off';
+    renderMediaButton(element<HTMLButtonElement>(id), 'camera', !state.cameraOn);
   }
-  const closeLabel = call || state.capturing || localActive ? 'Leave call' : 'Close ZoomTime'; element('close').title = closeLabel; element('close').setAttribute('aria-label', closeLabel);
+  const closeLabel = incoming ? 'Decline call' : call || state.capturing || localActive ? 'Leave call' : 'Close ZoomTime'; element('close').title = closeLabel; element('close').setAttribute('aria-label', closeLabel); element('close').dataset.participating = String(!!call || state.capturing || localActive);
+  show('mini-people', !!calling.role);
   show('self-preview', localActive && state.cameraOn);
   const remoteJoined = call?.members.filter(m => m.id !== calling.selfId && m.status === 'joined').length ?? 0;
   show('empty', !remoteJoined); videos.render(calling.members, call, state);
   element('partner-title').textContent = state.capturing ? 'Waiting for permission…' : incoming ? `${memberNames([call!.callerId])} is calling.` : outgoing ? 'Calling…' : calling.busy ? 'Private call in progress' : 'Your private group.';
   element('partner-detail').textContent = incoming ? `In this call: ${memberNames(call!.members.filter(m => m.status === 'joined').map(m => m.id))}. Accept to share your camera and microphone.` : !calling.role ? 'Pair your Macs, then choose who to call.' : calling.busy && !call ? 'Ask a participant to invite you.' : 'Choose named members below. Everyone joins explicitly.';
   const peerError = Object.values(state.peers).find(p => p.error)?.error;
-  const message = uiError || calling.error || state.error || peerError || ''; element('error').textContent = message; show('error', !!message);
+  const message = uiError || calling.error || state.error || peerError || ''; setText('error', message); show('error', !!message);
+  setText('mini-status', message || status); element('mini-status').title = message || status;
   show('audio-only', state.audioOnlyOffered && !state.capturing); show('devices', !!active && !!state.error && !state.capturing);
   show('resume-audio', Object.values(state.peers).some(p => p.error === 'Click Resume audio to start participant playback.'));
   if (!call) connectedAt = null; else if (state.connection === 'connected' || state.connection === 'degraded') connectedAt ??= Date.now();
@@ -230,8 +250,10 @@ element('check-start').addEventListener('click', () => { void check.start(prefer
 element('check-stop').addEventListener('click', () => { void check.stop(); });
 element('check-listen').addEventListener('change', () => { void check.listen(element<HTMLInputElement>('check-listen').checked); });
 element('settings-close').addEventListener('click', () => { void check.stop(); settings.close(); });
+element('output-volume').addEventListener('input', () => { const value = Number(element<HTMLInputElement>('output-volume').value); outputVolumeDraft = value; videos.setOutputVolume(value); element('output-volume-value').textContent = `${value}%`; });
+element('output-volume').addEventListener('change', () => { void updatePreferences({ outputVolume: Number(element<HTMLInputElement>('output-volume').value) }).finally(() => { outputVolumeDraft = null; applyPreferences(); }); });
 element('mirror').addEventListener('change', () => { void updatePreferences({ mirror: element<HTMLInputElement>('mirror').checked }); });
-element('speaker-echo-reduction').addEventListener('change', () => { void updatePreferences({ speakerEchoReduction: element<HTMLInputElement>('speaker-echo-reduction').checked }); });
+element('speaker-echo-reduction').addEventListener('change', () => { speakerEchoDraft = element<HTMLInputElement>('speaker-echo-reduction').checked; void updatePreferences({ speakerEchoReduction: speakerEchoDraft }).finally(() => { speakerEchoDraft = null; applyPreferences(); }); });
 element('normal-always-on-top').addEventListener('change', () => { void updatePreferences({ normalAlwaysOnTop: element<HTMLInputElement>('normal-always-on-top').checked }); });
 element('mini-always-on-top').addEventListener('change', () => { void updatePreferences({ miniAlwaysOnTop: element<HTMLInputElement>('mini-always-on-top').checked }); });
 element('mini-self-setting').addEventListener('change', () => { void updatePreferences({ miniSelf: element<HTMLInputElement>('mini-self-setting').checked }); });
@@ -251,13 +273,14 @@ new ResizeObserver(() => {
 }).observe(selfPreview);
 window.zoomtime.onSettings(openSettings);
 document.addEventListener('keydown', event => {
-  if (settings.open) return;
-  if (event.key === 'Escape' && element<HTMLDetailsElement>('call-menu').open) { element<HTMLDetailsElement>('call-menu').open = false; return; }
+  if (settings.open || renameDialog.open) return;
+  if (event.key === 'Escape' && element<HTMLDetailsElement>('call-menu').open) { event.preventDefault(); element<HTMLDetailsElement>('call-menu').open = false; element<HTMLElement>('call-menu').querySelector('summary')!.focus(); return; }
   if (event.key === 'Escape') {
     if (windowState?.mode === 'mini') { event.preventDefault(); run(() => window.zoomtime.restore().then(applyWindow)); }
     else if (windowState?.fullScreen) { event.preventDefault(); run(() => window.zoomtime.setFullScreen(false).then(applyWindow)); }
   }
 });
+document.addEventListener('pointerdown', event => { const menu = element<HTMLDetailsElement>('call-menu'); if (event.target instanceof Node && !menu.contains(event.target)) menu.open = false; });
 window.addEventListener('beforeunload', () => { void check.stop(); media.stop(); });
 window.zoomtime.onState(applyWindow);
 window.zoomtime.onCallEvent(event => { if (event.type === 'state') applyCalling(event.state); else if (event.type === 'stop') { if (check.state.active || check.state.capturing) void check.stop(event.reason); media.stop(event.reason); } else if (event.type === 'check-stop') void check.stop(event.reason); else void media.handleSignal(event.message); });
@@ -268,4 +291,4 @@ render();
 
 element('rename-form').addEventListener('submit', event => { event.preventDefault(); if (renamingId) void setup(async () => { await window.zoomtime.renameMember(renamingId!, element<HTMLInputElement>('rename-name').value); renameDialog.close(); renamingId = null; }); });
 element('rename-cancel').addEventListener('click', () => renameDialog.close());
-renameDialog.addEventListener('close', () => { renamingId = null; });
+renameDialog.addEventListener('close', () => { if (!renameDialog.open) renamingId = null; });

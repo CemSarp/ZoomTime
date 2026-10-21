@@ -7,7 +7,7 @@ const root = process.cwd();
 const startedAt=Date.now();
 const windows = new Map(), clients = new Map(), reports = new Map(), ready = new Set(), timers = new Set();
 const identityReports=new Map(),dropRequests=new Set(),pendingCaptures=new Set();let snapshot=new Map();
-const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map(),checkResults=new Map(),checkRaceResults=new Map(),echoResults=new Map();
+const authorized=new Set(),permissionResults=new Map(),qualityResults=new Map(),checkResults=new Map(),checkRaceResults=new Map(),echoResults=new Map(),echoChanges=new Map();
 const entry='zoomtime://app/main_window/index.html';
 protocol.registerSchemesAsPrivileged([{scheme:'zoomtime',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let server;
@@ -56,6 +56,7 @@ app.whenReady().then(async () => {
   ipcMain.on('harness:result', (event, result) => {
     const role = [...windows].find(([,w]) => w.webContents === event.sender)?.[0];
     if (result.type === 'echo-probe') echoResults.set(role,result);
+    if (result.type === 'echo-change') echoChanges.set(role,result);
     if (result.type === 'ready') ready.add(role); else { reports.set(role, result); if(result.type==='report')identityReports.set(role,result); if(result.type==='capture-pending')pendingCaptures.add(role); if(result.type==='permission-probe')permissionResults.set(role,result); if(result.type==='quality')qualityResults.set(role,result); if(result.type==='check')checkResults.set(role,result); if(result.type==='check-race')checkRaceResults.set(role,result); }
   });
   const makeWindow=async role=>{
@@ -191,6 +192,7 @@ app.whenReady().then(async () => {
   };
   action('host','start',{targetIds:[member('guest').id]});await wait(()=>phase()==='connected','Two-person mesh connects');
   let meshRows=await usable(roles.slice(0,2));const beforeGrowth=meshRows;
+  action('host','output-volume',{volume:50});action('host','participant-volume',{participantId:member('guest').id,volume:40});
   for(let count=3;count<=5;count++){
     action('guest','invite',{targetIds:[member(roles[count-1]).id]});
     await wait(()=>server.coordinator.snapshot?.pairs.length===count*(count-1)/2&&phase()==='connected',`Grow existing call to ${count}`);
@@ -198,8 +200,12 @@ app.whenReady().then(async () => {
     for(const role of ['host','guest']){const original=beforeGrowth.get(role);assert.deepEqual(meshRows.get(role).localTrackIds,original.localTrackIds);assert.equal(meshRows.get(role).acquisitions,original.acquisitions);assert.equal(meshRows.get(role).peers.find(p=>p.id===member(role==='host'?'guest':'host').id).identity,original.peers[0].identity);}
   }
   assert.ok([...meshRows.values()].every(r=>r.peers.length===4&&r.videoCount===4));
+  for(const p of meshRows.get('host').peers)assert.equal(p.volume,p.id === member('guest').id ? 0.2 : 0.5,'Existing and newly joined participants use overall × individual volume');
+  for(const role of roles.slice(1))assert.ok(meshRows.get(role).peers.every(p=>p.volume===1),'Local listening controls never change others’ output');
+  action('host','participant-volume',{participantId:member('guest5').id,volume:0});meshRows=await usable(roles);assert.equal(meshRows.get('host').peers.find(p=>p.id===member('guest5').id).volume,0);
   const beforePin=meshRows.get('host');action('host','pin',{participantId:member('guest3').id});meshRows=await usable(roles);
   assert.deepEqual(meshRows.get('host').peers.map(p=>p.identity),beforePin.peers.map(p=>p.identity));assert.equal(meshRows.get('host').videoCount,4);
+  assert.deepEqual(meshRows.get('host').peers.map(p=>[p.videoIdentity,p.volume]),beforePin.peers.map(p=>[p.videoIdentity,p.volume]),'Pinning preserves volume and playback element identity');
   assert.equal(meshRows.get('host').peers.filter(p=>p.hidden).length,3,'Product CSS must actually hide three unpinned tiles');
   const pinnedStart=meshRows;await new Promise(resolve=>setTimeout(resolve,6000));meshRows=await collect(roles);
   for(const [role,row] of meshRows)for(const peer of row.peers){
@@ -208,7 +214,19 @@ app.whenReady().then(async () => {
     assert.ok(peer.stats.receivedVideoFrames>before.stats.receivedVideoFrames,'Hidden videos must keep receiving frames');
     assert.equal(row.state.peers[peer.id].stale,false,'Pinning must not trigger an outage');
   }
-  action('host','pin');
+  action('host','pin');action('host','output-volume',{volume:0});meshRows=await usable(roles);assert.ok(meshRows.get('host').peers.every(p=>p.volume===0));
+  action('host','output-volume',{volume:100});meshRows=await usable(roles);for(const p of meshRows.get('host').peers)assert.equal(p.volume,p.id === member('guest').id ? 0.4 : p.id === member('guest5').id ? 0 : 1);
+  const beforeEcho=meshRows.get('host'),echoCallId=server.coordinator.snapshot.id,echoPairs=server.coordinator.snapshot.pairs.map(p=>[p.id,p.generation]);
+  action('host','mute');await wait(()=>mediaOf('host')?.audio===false,'Mute before live echo changes');
+  let echoAcquisitions=beforeEcho.acquisitions;
+  for(const enabled of [false,true,false]){
+    echoChanges.delete('host');action('host',enabled?'echo-live-on':'echo-live-off');await wait(()=>echoChanges.get('host')?.enabled===enabled,'Live echo microphone replacement completes');
+    meshRows=await usable(roles);const row=meshRows.get('host');
+    assert.equal(row.acquisitions,++echoAcquisitions);assert.deepEqual(row.cameraTrackIds,beforeEcho.cameraTrackIds);assert.deepEqual(row.audioEnabled,[false]);assert.equal(row.unsafeAudioReplacement,false);
+    assert.deepEqual(row.peers.map(p=>[p.id,p.identity,p.videoIdentity,p.volume]),beforeEcho.peers.map(p=>[p.id,p.identity,p.videoIdentity,p.volume]));
+    assert.equal(server.coordinator.snapshot.id,echoCallId);assert.deepEqual(server.coordinator.snapshot.pairs.map(p=>[p.id,p.generation]),echoPairs);
+  }
+  action('host','mute');await wait(()=>mediaOf('host')?.audio===true,'Unmute after live echo changes');await usable(roles);
   const affected=server.coordinator.snapshot.pairs.find(p=>p.a===member('guest').id&&p.b===member('guest3').id);
   const healthyGenerations=new Map(server.coordinator.snapshot.pairs.filter(p=>p.id!==affected.id).map(p=>[p.id,p.generation]));
   action('guest','pause-peer-video',{participantId:member('guest3').id});await wait(()=>server.coordinator.snapshot?.pairs.find(p=>p.id===affected.id)?.generation===2,'One failed guest-to-guest video link restarts independently',15000);
@@ -222,7 +240,7 @@ app.whenReady().then(async () => {
   const output=join(root,'out/verification');mkdirSync(output,{recursive:true});
   writeFileSync(join(output,'media-integration.json'),JSON.stringify({timestamp:new Date().toISOString(),durationMs:Date.now()-startedAt,versions:process.versions,architecture:process.arch,
     generatedMedia:true,singleMac:true,iceServers:[],groupSizes:[2,3,4,5],meshEndpoints:[...meshRows].map(([role,r])=>({role,peers:r.peers})),requestTimeoutMs,staleRecoveryMs,ringTimeoutMs:Date.now()-ringStarted,mediaStatistics,
-    checks:['local camera/microphone check, meter, opt-in monitor, stop, late cancellation, error and retry','real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released','two to five participants with all ten bidirectional links','one capture reused during growth','pin preserves all remote streams','isolated guest-to-guest recovery','host media departure and fresh-invitation rejoin'],
+    checks:['local camera/microphone check, meter, opt-in monitor, stop, late cancellation, error and retry','real getUserMedia denies before and succeeds after explicit permission authorization using generated test devices','bidirectional decoded video and audio packets','720p/1080p/360p apply to real generated camera without replacing peer or leaking tracks','early ICE','stale generation','same peers on resize/signaling recovery/ICE restart','camera stop and sender replacement','mute preserved before device replacement','outgoing and incoming late capture cancellation','explicit audio-only fallback','microphone denial','lost request cleanup','second call','frozen-video detection with one restart and bounded recovery cleanup','real 60-second ring timeout','all captured tracks released','two to five participants with all ten bidirectional links','one capture reused during growth','pin preserves all remote streams','overall and participant volume multiply locally on existing playback elements, including new participants, zero volume and pinning','live echo on/off replaces only the muted microphone across four persistent peers without call/pair/generation/volume changes','isolated guest-to-guest recovery','host media departure and fresh-invitation rejoin'],
     pending:['hardware capture/routing','actual two-Mac/two-network call','native full-screen movie on partner Mac','three-hour session','downloaded installation/update']},null,2)+'\n');
   console.log('MEDIA_TEST_PASS: real local WebRTC, bidirectional audio/video, early ICE, stale generation, persistent peers on resize/reconnect/ICE restart, camera off/on, mute preserved during recovery, outgoing/incoming late capture cancellation, explicit audio-only fallback, microphone denial, second call, real 60-second ring timeout and cleanup. Two-Mac/network/hardware acceptance remains untested.');
 }).catch(error => { console.error('MEDIA_TEST_FAIL:', error.message, JSON.stringify({ phase: phase(), traffic, reports: [...reports] })); process.exitCode = 1; }).finally(async () => {

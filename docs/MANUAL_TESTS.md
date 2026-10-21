@@ -1,3 +1,5 @@
+> Current updater acceptance: [0.5.0 incremental migration and two-Mac permission matrix](superpowers/plans/2026-10-18-incremental-updater-acceptance.md). The0.5.0 candidate is unpublished; its native fixtures do not establish normal-app permission continuity. Historical procedures below retain their original scope.
+
 > Historical 0.1.0 synthetic window-probe procedure. For the calling candidate use [current acceptance](ACCEPTANCE.md), [verification](VERIFICATION.md), and [network setup](NETWORK_SETUP.md). The user reported their own-Mac full-screen test passing on 2026-10-14; partner evidence remains pending.
 
 # Phase 1 physical acceptance
@@ -66,3 +68,18 @@ Have the host Leave while at least two guests continue; installation/retry must 
 ## Experimental group candidate now available — 2026-10-17
 
 Open /Applications/ZoomTime Experimental.app. Use the same candidate on every Mac; the regular/published0.3.4 app is still two-person. Each person uses their own Tailscale identity and member-specific private pairing invitation; every media pair needs connectivity. Call two, then invite a third through fifth; verify ten media links at capacity, pin/unpin and each microphone. Host Leave must preserve remaining guests; host quit must clean up. Record actual results in the group acceptance matrix. Local generated-media/package checks have passed, but none of these real-Mac results is implied. Previous experimental app and exact ZIP/checksum are in HANDOFF.
+
+
+## 0.5.0 local volume checks
+
+On each real Mac with a multi-person call, use headphones first and a comfortable system level. Verify overall0/25/50/100%, independent participant levels (including0), saved overall level after restart, four named sliders, rename and departure cleanup. Check camera-off participants, pin/unpin, Mini at320×180 and160×90, keyboard/scroll, and dragging overall volume while moving/resizing/switching modes. Sound must not jump to an old saved level. Confirm the movie/system setting, transmitted microphone and every other participant's personal listening levels remain unchanged. Check real speaker/headphone attenuation and routing; browser properties/generated packets alone do not prove acoustic calibration. Per-person levels reset on a new participation.
+
+Automated layout screenshots use explicitly synthetic participant rows; they are not photos or evidence of real multi-Mac callers.
+
+## UI pass acceptance —2026-10-21
+
+See [control inventory and software evidence](UI_UX_REVIEW.md). On both physical Macs, use Normal640×420 and larger plus Mini160×90/320×180 in light/dark, increased contrast and Reduced Motion. Check microphone/camera symbols and slashed off states, action tooltips/VoiceOver labels, keyboard focus, three-dot menu dismissal/scroll, maximum-length names, settings sections/switches and visible errors. Test every inventory row, especially actual permission denial/recovery, blocked audio Resume, camera/microphone hardware release, output balance, live invite/leave/pin and update restart blocking. Confirm no media identity changes on mode/pin. Repeat native full-screen→Mini→restore and full-screen→Dock→restore rapidly and after the Space settles; one same-build automated Dock assertion failed before an unchanged passing rerun. Real installed permissions/Screen Recording bug, host/safeStorage package group and all prior two-Mac/network/long-session gates stay pending.
+
+## Live speaker echo acceptance —2026-10-21
+
+In the same2–5-Mac call, switch Settings → Reduce speaker echo on/off repeatedly, including while muted and camera-off. Verify no rejoin, unchanged call/pin/listening levels/camera, no muted speech leak and continued audio on every link. Compare real movie playback, speech-over-movie and simultaneous speech at moderate volume; results are pending, not inferred from generated packets. Repeat during a device check with monitoring off/on using headphones: preserve camera/meter/listening and original two-minute stop. Check collapsed info, actual applied/unavailable/off status, saved setting, denial/current-mic preservation and Leave during a pending microphone/rollback. Request only normal macOS permissions; no TCC reset. Physical acoustic efficacy, installed permission continuity, separate Screen Recording bug and existing group/network/long-session gates remain pending.

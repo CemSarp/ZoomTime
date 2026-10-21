@@ -5,7 +5,7 @@ import { GroupVideoView } from '../src/call-view.ts';
 import type { CallingState, CaptureAction } from '../src/calling-state.ts';
 import type { ClientMessage, ServerMessage } from '../src/protocol.ts';
 declare global {
-  interface Window { harness: { send(message: ClientMessage): Promise<void>; authorize(action: CaptureAction | 'check' | 'permission-probe'): Promise<void>; release(): Promise<void>; event(callback: (message: ServerMessage | { type: 'action'; action: string; targetIds?: string[]; participantId?: string }) => void): void; result(value: unknown): void } }
+  interface Window { harness: { send(message: ClientMessage): Promise<void>; authorize(action: CaptureAction | 'check' | 'permission-probe'): Promise<void>; release(): Promise<void>; event(callback: (message: ServerMessage | { type: 'action'; action: string; targetIds?: string[]; participantId?: string; volume?: number }) => void): void; result(value: unknown): void } }
 }
 const systemCapture = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 async function probePermissions(): Promise<void> {
@@ -27,13 +27,22 @@ async function probeSpeakerEcho(): Promise<void> {
     const track = stream.getAudioTracks()[0];
     const capabilities = track.getCapabilities().echoCancellation ?? [];
     const status = speakerEchoStatus(track, true);
-    window.harness.result({ type: 'echo-probe', status, capabilities, setting: track.getSettings().echoCancellation });
+    const setting = track.getSettings().echoCancellation, transitions = [];
+    for (const echoCancellation of [{ ideal: 'all' }, true, { ideal: 'remote-only' }, { ideal: 'all' }, { ideal: 'remote-only' }]) {
+      await track.applyConstraints({ echoCancellation }); transitions.push({ requested: echoCancellation, setting: track.getSettings().echoCancellation });
+    }
+    const replacements = [];
+    for (const mode of ['remote-only', 'all']) {
+      const replacement = await systemCapture({ audio: { ...microphoneConstraints(false), echoCancellation: { exact: mode } }, video: false });
+      replacements.push({ requested: mode, setting: replacement.getAudioTracks()[0].getSettings().echoCancellation }); replacement.getTracks().forEach(t => t.stop());
+    }
+    window.harness.result({ type: 'echo-probe', status, capabilities, setting, transitions, replacements, live: track.readyState === 'live' });
   } finally { stream?.getTracks().forEach(t => t.stop()); await window.harness.release(); }
 }
 const captured: MediaStreamTrack[] = [];
 let acquisitions = 0;
-const identities = new WeakMap<RTCPeerConnection, string>();
-const identity = (peer: RTCPeerConnection) => { if (!identities.has(peer)) identities.set(peer, crypto.randomUUID()); return identities.get(peer)!; };
+const identities = new WeakMap<object, string>();
+const identity = (peer: object) => { if (!identities.has(peer)) identities.set(peer, crypto.randomUUID()); return identities.get(peer)!; };
 const paused = new Map<string, { sender: RTCRtpSender; track: MediaStreamTrack }>();
 const freezeVideo = new Map<MediaStreamTrack, () => void>();
 let delayNext = false, releasePending: (() => void) | null = null, autoAccept = true;
@@ -88,7 +97,10 @@ const start = (audioOnly = false, targetIds?: string[]) => call.start({ action: 
 window.harness.event(message => {
   if (message.type === 'action') {
     if (message.action === 'probe-echo') void probeSpeakerEcho();
-    if (message.action === 'echo-on') call.setSpeakerEchoReduction(true);
+    if (message.action === 'echo-on') void call.setSpeakerEchoReduction(true);
+    if (message.action === 'echo-live-on' || message.action === 'echo-live-off') {
+      const enabled = message.action === 'echo-live-on'; void call.setSpeakerEchoReduction(enabled).then(() => window.harness.result({ type: 'echo-change', enabled, state: call.state }));
+    }
     if (message.action === 'check-start-experimental') void deviceCheck.start('720p', true);
     if (message.action === 'check-start') void deviceCheck.start('720p');
     if (message.action === 'check-stop') void deviceCheck.stop();
@@ -124,6 +136,8 @@ window.harness.event(message => {
     if (message.action === 'reset-reference') firstPeer = null;
     if (message.action === 'disable-auto-accept') autoAccept=false;
     if (message.action === 'enable-auto-accept') autoAccept=true;
+    if (message.action === 'output-volume' && message.volume !== undefined) videos.setOutputVolume(message.volume);
+    if (message.action === 'participant-volume' && message.participantId && message.volume !== undefined) videos.setParticipantVolume(message.participantId, message.volume);
     if (message.action === 'pin') videos.pin(message.participantId ?? null);
     if (message.action === 'invite' && latest.call && message.targetIds) void window.harness.send({v:2,type:'invite',callId:latest.call.id,targetIds:message.targetIds});
     if (message.action === 'pause-peer-video' && message.participantId) { const sender=call.connections.get(message.participantId)?.getSenders().find(s=>s.track?.kind==='video'); if(sender?.track){paused.set(message.participantId,{sender,track:sender.track});void sender.replaceTrack(null);} }
@@ -132,7 +146,7 @@ window.harness.event(message => {
     if (message.action === 'audio-only-start') {mustStayMuted=false;void start(true, message.targetIds);}
     if (message.action === 'fail-audio-start') {failAudio=true;mustStayMuted=false;void start(true, message.targetIds);}
     if (message.action === 'delay-next-capture') delayNext=true;
-    if (message.action === 'report') { firstPeer ??= call.connection; window.harness.result({ type: 'report', state: call.state, liveTracks: captured.filter(t => t.readyState === 'live').length, videoHeight: remoteHeight(), peerState: call.connection?.connectionState, samePeer: firstPeer === call.connection, transceivers: call.connection?.getTransceivers().length, unsafeAudioReplacement, acquisitions, localTrackIds: (local.srcObject instanceof MediaStream ? local.srcObject.getTracks().map(t=>t.id) : []), videoCount: document.querySelectorAll('#remote-grid video').length, peers: [...call.connections].map(([id,peer])=>({id,identity:identity(peer),connection:peer.connectionState,transceivers:peer.getTransceivers().length,videoHeight:videos.remote(id).videoHeight,hidden:getComputedStyle(videos.remote(id).parentElement!).opacity==='0',stats:call.state.peers[id]?.stats,muted:videos.remote(id).muted})) }); }
+    if (message.action === 'report') { firstPeer ??= call.connection; window.harness.result({ type: 'report', state: call.state, liveTracks: captured.filter(t => t.readyState === 'live').length, videoHeight: remoteHeight(), peerState: call.connection?.connectionState, samePeer: firstPeer === call.connection, transceivers: call.connection?.getTransceivers().length, unsafeAudioReplacement, acquisitions, localTrackIds: (local.srcObject instanceof MediaStream ? local.srcObject.getTracks().map(t=>t.id) : []), cameraTrackIds: (local.srcObject instanceof MediaStream ? local.srcObject.getVideoTracks().map(t=>t.id) : []), audioEnabled: (local.srcObject instanceof MediaStream ? local.srcObject.getAudioTracks().map(t=>t.enabled) : []), videoCount: document.querySelectorAll('#remote-grid video').length, peers: [...call.connections].map(([id,peer])=>({id,identity:identity(peer),connection:peer.connectionState,transceivers:peer.getTransceivers().length,videoHeight:videos.remote(id).videoHeight,hidden:getComputedStyle(videos.remote(id).parentElement!).opacity==='0',stats:call.state.peers[id]?.stats,muted:videos.remote(id).muted,volume:videos.remote(id).volume,videoIdentity:identity(videos.remote(id))})) }); }
     return;
   }
   if (message.type === 'state') {

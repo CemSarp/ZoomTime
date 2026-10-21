@@ -82,6 +82,15 @@ export class MediaPeer {
     }
   }
   async replaceTracks(stream: MediaStream): Promise<void> { this.stream = stream; return this.serial(() => this.attachTracks(), true); }
+  replaceMicrophone(track: MediaStreamTrack): Promise<void> {
+    const operation = this.queue.then(async () => {
+      if (this.closed) return;
+      const sender = this.connection.getTransceivers().find(t => t.receiver.track.kind === 'audio')?.sender;
+      if (sender && sender.track !== track) await sender.replaceTrack(track);
+    });
+    // An optional audio-setting failure is recoverable and must not close the peer.
+    this.queue = operation.catch(() => {}); return operation;
+  }
   private async offer(generation: number): Promise<void> {
     const peer = this.connection;
     if (!peer.getTransceivers().length) {

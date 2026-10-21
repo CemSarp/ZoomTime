@@ -12,23 +12,23 @@
     <div class="heading"><div><p class="eyebrow">YOUR PRIVATE SPACE</p><h1>A little closer.</h1></div><span id="status" class="connection-status" role="status">Pair your Macs</span></div>
     <section class="stage" aria-label="Group video">
       <div id="remote-grid" class="remote-grid" data-count="0" data-pinned="false"></div>
-      <details id="call-menu" class="call-menu"><summary aria-label="Participant and view actions">•••</summary><div><label for="focus-person">Video view</label><select id="focus-person" aria-label="Pin a participant or show everyone"><option value="">Show everyone</option></select><button id="mini-people" type="button">People and invitations</button></div></details>
+      <details id="call-menu" class="call-menu"><summary aria-label="Call volume, participant and view actions" title="Call volume, people and video view"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></summary><div><label for="focus-person">Video view</label><select id="focus-person" aria-label="Pin a participant or show everyone"><option value="">Show everyone</option></select><label class="output-volume" for="output-volume">Call volume <output id="output-volume-value">100%</output></label><input id="output-volume" type="range" min="0" max="100" step="1" value="100" aria-label="Overall call volume" aria-describedby="volume-help" /><p id="volume-help" class="volume-help">Only what you hear. macOS output volume still applies.</p><div id="participant-volumes" role="group" aria-label="Participant volumes"></div><button id="mini-people" type="button">People and invitations</button></div></details>
       <div id="empty"><span class="avatar" aria-hidden="true">♡</span><h2 id="partner-title">Make room for each other.</h2><p id="partner-detail">One private call. An evening together.</p></div>
       <div id="self-preview" class="self-preview" hidden><video id="local" autoplay muted playsinline disablepictureinpicture aria-label="Your muted self-preview"></video><span aria-hidden="true">You</span></div>
       <span id="mini-status" role="status">Ready when you are</span>
       <div class="mini-controls" role="group" aria-label="Call and window controls">
-        <button id="mini-mute" type="button" title="Mute microphone" aria-label="Mute microphone" disabled>Mic</button>
-        <button id="mini-camera" type="button" title="Turn camera off" aria-label="Turn camera off" disabled>Cam</button>
-        <button id="mini-self" type="button" title="Show your camera preview" aria-label="Show your camera preview" aria-pressed="false">You</button>
-        <button id="restore" type="button" title="Restore normal window (Escape)" aria-label="Restore normal window">↗</button>
-        <button id="close" class="danger" type="button" title="Close ZoomTime" aria-label="Close ZoomTime">×</button>
+        <button id="mini-mute" type="button" title="Mute microphone" aria-label="Mute microphone" class="media-button" disabled></button>
+        <button id="mini-camera" type="button" title="Turn camera off" aria-label="Turn camera off" class="media-button" disabled></button>
+        <button id="mini-self" type="button" title="Show your camera preview" aria-label="Show your camera preview" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="13" y="11" width="5" height="6" rx="1"/></svg></button>
+        <button id="restore" type="button" title="Restore normal window (Escape)" aria-label="Restore normal window"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-7 7M4 14v6h6M4 20l7-7"/></svg></button>
+        <button id="close" class="danger" type="button" title="Close ZoomTime" aria-label="Close ZoomTime"><svg class="close-call" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-3c5-5 13-5 18 0v3l-5 1v-4a13 13 0 0 0-8 0v4z"/></svg><svg class="close-window" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
       </div>
     </section>
     <div class="controls" role="group" aria-label="Call controls">
       <button id="call" class="primary" type="button" disabled>Select people to call</button>
       <button id="accept" class="primary" type="button" hidden>Accept call</button>
       <button id="reject" type="button" hidden>Decline</button><button id="cancel" type="button" hidden>Cancel</button>
-      <button id="mute" type="button" hidden>Mute microphone</button><button id="camera" type="button" hidden>Turn camera off</button>
+      <button id="mute" class="media-button" type="button" hidden aria-label="Mute microphone"></button><button id="camera" class="media-button" type="button" hidden aria-label="Turn camera off"></button>
       <button id="hangup" class="danger" type="button" hidden>Leave call</button>
       <button id="invite-members" type="button" hidden>Select people to invite</button>
       <span class="spacer"></span><button id="mini" type="button" title="Float above other windows (⌘⇧M)">Mini window ↘</button>
@@ -43,7 +43,7 @@
       </div>
       <details class="advanced"><summary>Manual host setup</summary><form id="host-form"><label for="endpoint">Private Tailscale endpoint</label><div class="row"><input id="endpoint" type="url" maxlength="512" autocomplete="off" spellcheck="false" placeholder="wss://your-mac.your-tailnet.ts.net:8443/zoomtime" required /><button id="manual-host" type="submit">Use endpoint</button></div><p class="small">Use only if private Serve is already configured on port 8443 → localhost:47831.</p></form></details>
     </section>
-    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><span class="spacer"></span><button id="retry" type="button">Retry connection</button><button id="reset" class="danger" type="button">Reset Pairing</button></div></section>
+    <section id="paired" class="pairing" hidden><div class="row"><span id="pairing-status"></span><button id="retry" type="button">Retry connection</button><button id="reset" class="danger" type="button">Reset pairing…</button></div></section>
     <section id="group" class="pairing" aria-labelledby="group-title" tabindex="-1" hidden>
       <h2 id="group-title">People · up to five</h2><p>Select who to call or invite. Each person accepts before sharing media.</p>
       <div id="contacts" role="group" aria-label="Named group members"></div>
@@ -54,7 +54,7 @@
     <p id="preferences" class="notice" role="status" hidden>Preferences could not be saved. Check available disk space, then retry.</p>
     <footer><span>Private by design <span aria-hidden="true">·</span> Capture only when started</span><span class="spacer"></span><button id="open-settings" type="button" title="Settings (⌘,)">Settings</button></footer>
   </main>
-  <dialog id="rename-member" aria-labelledby="rename-title"><form id="rename-form"><h2 id="rename-title">Rename member</h2><label for="rename-name">Name (1–40 characters)</label><input id="rename-name" type="text" maxlength="40" required autocomplete="off" autofocus /><div class="row"><button id="rename-save" type="submit">Save name</button><button id="rename-cancel" type="button">Cancel</button></div><p id="rename-error" role="alert" hidden></p></form></dialog>
+  <dialog id="rename-member" aria-labelledby="rename-title"><form id="rename-form"><h2 id="rename-title">Rename member</h2><label for="rename-name">Name (1–40 characters)</label><input id="rename-name" type="text" maxlength="40" required autocomplete="off" autofocus /><div class="row"><button id="rename-save" class="primary" type="submit">Save name</button><button id="rename-cancel" type="button">Cancel</button></div><p id="rename-error" role="alert" hidden></p></form></dialog>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="settings-header"><div><p class="eyebrow">MAKE IT YOURS</p><h2 id="settings-title">Call settings</h2></div><button id="settings-close" type="button" aria-label="Close settings">Done</button></div>
     <p class="settings-description">Changes apply to this Mac and are remembered for your next call.</p>
@@ -65,16 +65,16 @@
     <div class="settings-group">
       <label class="setting-row" for="quality"><span><strong>Camera quality</strong><small>The video you send to each participant.</small></span><select id="quality"><option value="360p">360p · Data saver</option><option value="720p">720p · HD</option><option value="1080p">1080p · Full HD</option></select></label>
       <p class="setting-help">720p balances detail and bandwidth. 1080p uses more power and data. Actual quality depends on your camera and connection.</p>
-      <label class="setting-row" for="mirror"><span><strong>Mirror my preview</strong><small>Flip your own view horizontally. Your partner’s view stays unchanged.</small></span><input id="mirror" type="checkbox" role="switch" /></label>
+      <label class="setting-row" for="mirror"><span><strong>Mirror my preview</strong><small>Flip your own view horizontally. Other participants’ views stay unchanged.</small></span><input id="mirror" type="checkbox" role="switch" /></label>
     </div>
     <div class="settings-group">
       <label class="setting-row" for="mini-self-setting"><span><strong>Show me in mini mode</strong><small>Keep a small self-preview alongside your group.</small></span><input id="mini-self-setting" type="checkbox" role="switch" /></label>
       <label class="setting-row" for="preview-size"><span><strong>Self-preview size</strong><small>Applies in both modes. You can also drag its bottom-right corner.</small></span><input id="preview-size" type="range" min="18" max="45" step="1" aria-label="Self-preview size" /></label>
     </div>
     <div class="settings-group">
-      <label class="setting-row" for="speaker-echo-reduction"><span><strong>Reduce speaker echo · Experimental</strong><small>Try to remove movie and other Mac playback from your microphone.</small></span><input id="speaker-echo-reduction" type="checkbox" role="switch" aria-describedby="speaker-echo-help speaker-echo-status" /></label>
-      <p id="speaker-echo-help" class="setting-help">Applies to your next call or device check. Your Mac may ask for system-audio access. Availability varies; loud playback may still leak through or affect your voice. Headphones work best.</p>
+      <label class="setting-row" for="speaker-echo-reduction"><span><strong>Reduce speaker echo</strong><small>Reduce movie and other Mac playback picked up by your microphone.</small></span><input id="speaker-echo-reduction" type="checkbox" role="switch" aria-describedby="speaker-echo-status" /></label>
       <p id="speaker-echo-status" class="setting-help" role="status"></p>
+      <details id="speaker-echo-info" class="speaker-echo-info"><summary>How it works</summary><p id="speaker-echo-help" class="setting-help">Uses WebRTC echo cancellation to reduce speaker audio picked up by your microphone. Switch during a call or device check; your microphone may briefly pause. Off keeps normal call echo cancellation. macOS may ask for system-audio access. Results vary; headphones work best.</p></details>
     </div>
     <section class="settings-group device-check" aria-labelledby="check-title">
       <h3 id="check-title">Camera &amp; microphone check</h3>
@@ -88,7 +88,7 @@
     </section>
     <section class="settings-group" aria-labelledby="screen-title">
       <h3 id="screen-title">Screen capture · Local diagnostic</h3>
-      <p class="setting-help">Allow checks an existing grant before requesting access. If macOS keeps asking or capture is still denied, open Screen Recording settings and authorize this copy of ZoomTime, then quit and reopen it from Applications. Start saves local H.264/PNG; nothing is sent to your partner. Closing Settings stops capture. Protected video is unsupported.</p>
+      <p class="setting-help">Allow checks an existing grant before requesting access. If macOS keeps asking or capture is still denied, open Screen Recording settings and authorize this copy of ZoomTime, then quit and reopen it from Applications. Start saves local H.264/PNG; nothing is sent to other participants. Closing Settings stops capture. Protected video is unsupported.</p>
       <div class="row"><button id="screen-request" type="button">Allow screen access</button><button id="screen-settings" type="button">Screen Recording settings</button><button id="screen-refresh" type="button">Refresh sources</button></div>
       <label class="setting-row" for="screen-kind"><span>Capture source</span><select id="screen-kind"><option value="display">Display</option><option value="window">Windows · up to four</option></select></label>
       <label for="screen-sources" class="setting-help">Select sources (Command-click for multiple windows)</label>
@@ -102,8 +102,8 @@
       <p id="update-version" class="setting-help"></p>
       <p id="update-status" class="setting-help" role="status" aria-live="polite">Updates are checked only when you ask.</p>
       <progress id="update-progress" max="100" value="0" aria-label="Update download progress" hidden></progress>
-      <div class="row"><button id="update-check" type="button">Check for updates</button><button id="update-download" type="button" hidden>Download update</button><button id="update-install" type="button" hidden>Install and restart</button><button id="update-reveal" type="button" hidden>Show verified download in Finder</button></div>
-      <p class="setting-help">From CemSarp/ZoomTime on GitHub, including clearly labeled prereleases. Downloads are checksum-verified. Install and restart replaces this app and keeps the previous version as a backup. End calls first; pairing and preferences stay on this Mac. macOS may ask you to approve this private build.</p>
+      <div class="row"><button id="update-check" type="button">Check for updates</button><button id="update-download" type="button" hidden>Update ZoomTime</button><button id="update-install" type="button" hidden>Restart to update</button><button id="update-reveal" type="button" hidden>Show recovery backup</button></div>
+      <p class="setting-help">From CemSarp/ZoomTime on GitHub, including clearly labeled prereleases. Update downloads changed bytes where possible, verifies the result, and prepares installation on the next quit. Restart finishes now; the previous version is kept as a backup. End calls first; pairing and preferences stay on this Mac. macOS may ask you to approve this private build.</p>
     </section>
     <p id="settings-error" class="notice" role="alert" hidden></p>
     <p class="setting-help">Each Mac plays its own movie. ⌘⇧M toggles the floating mini window. Escape restores it or exits full screen.</p>

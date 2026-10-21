@@ -1,29 +1,25 @@
-# Install or update ZoomTime 0.4.0 (prerelease)
+# Install or update ZoomTime0.5.0 (prerelease)
 
-Requires an Apple Silicon Mac (M1 or newer), native arm64 execution, and macOS14+. Intel/Rosetta is unsupported; historical downloads are retained.
+Requires Apple Silicon (arm64), macOS14+. Intel/Rosetta is unsupported; historical releases remain available. Download [ZoomTime-darwin-arm64-0.5.0.zip](https://github.com/CemSarp/ZoomTime/releases/download/v0.5.0/ZoomTime-darwin-arm64-0.5.0.zip). Recipients need no compiler, Node, Xcode or GitHub account.
 
-## Update from inside ZoomTime
+## Migrate from an older release
 
-1. Open Settings and choose **Check for updates**. The0.4.0 prerelease should appear on supported Macs.
-2. Choose **Download update** and wait for verification. The app checks the GitHub asset’s size and SHA-256 and retains macOS quarantine.
-3. Finish calls, device checks and local screen capture. A host coordinating other participants must wait for the entire call to end.
-4. On0.3.4, choose **Install and restart**. The previous app is kept as a backup; pairing/preferences remain in your profile. Allow normal macOS/Keychain prompts.
-5. On0.3.2/0.3.3, use the verified Finder download: quit ZoomTime, extract the ZIP, and replace ZoomTime.app in Applications. On0.2.0, use the direct ZIP below.
+1. In0.3.4/0.4.0, open Settings → Check for updates → Download update. The app verifies GitHub size/SHA-256 and keeps macOS quarantine.
+2. Finish calls, hosted groups, device checks and local capture, then choose Install and restart. The old bundle is preserved; encrypted pairing/settings remain outside the app. Older installers or renamed Experimental previews may need one final Finder replacement from the verified ZIP. Keep the previous app.
+3. This first persistent-signing migration is a full download. Normal Gatekeeper, Keychain and media approvals may occur. Do not reset pairing, TCC or trust settings. This private self-signed build is not Apple-notarized; use normal per-app approval when appropriate, never disable Gatekeeper or remove quarantine.
 
-All participants must upgrade together.0.4.0 uses a new group-call protocol; an older running app cannot join. Legacy encrypted pairing data migrates with original-ciphertext backups; do not reset pairing just to update.
+## First installation and later updates
 
-## First installation
+Extract the ZIP and put **ZoomTime.app** directly in `/Applications` or `~/Applications`, then open normally. **ZoomTime Experimental.app** is also supported directly in those folders. The app/folder must be user-owned/writable. Nested folders (including `~/Applications/ZoomTime Testing`) can run the app but are not accepted for in-app installation. No path/security exception is added automatically.
 
-1. Download [ZoomTime-darwin-arm64-0.4.0.zip](https://github.com/CemSarp/ZoomTime/releases/download/v0.4.0/ZoomTime-darwin-arm64-0.4.0.zip).
-2. Extract it and move ZoomTime.app to /Applications or your own ~/Applications. No Node, Xcode or GitHub account is required.
-3. Open ZoomTime. This private build is ad-hoc signed and unnotarized; use the supported per-app approval in macOS Privacy & Security if prompted. Do not disable Gatekeeper or remove quarantine.
-4. Each person installs Tailscale using their own identity. Permit connectivity between every participating Mac, not just to the host. The host adds named members and explicitly shares each person’s own secret invitation privately.
-5. Select names and Call; each invited person accepts. Keep the host app open even if its user leaves the conversation.
+After migration: **Check for updates** only discovers. **Update ZoomTime** explicitly authorizes download/verification/staging and installation when the app next quits. **Restart to update** applies immediately only when local/hosted calls, device checks and screen capture are idle. A previous signed bundle is kept as a recovery backup. Subsequent compatible releases can transfer signed deltas; missing/inapplicable/corrupt deltas fall back to a full verified download.0.5.0 has no compatible earlier signed release, so this release contains no delta. No background checks or updates.
 
-## Known permission bug and test status
+Install the current version on all participating Macs. Each person uses their own Tailscale identity and every pair needs connectivity. Host adds named members and shares each person's own secret invitation privately; guests paste only their invitation. Keep the signaling host app open if the host leaves media. Existing encrypted pairings migrate with original-ciphertext backups; do not reset pairing just to upgrade.
 
-**The screen-share/screen-capture Screen Recording permission bug remains unresolved.** macOS can repeatedly ask for access or refuse capture after it is enabled. Use Settings → Screen Recording settings to check this exact app, then quit and reopen from Applications; this is recovery guidance, not a guaranteed fix. Screen capture currently produces local diagnostics only. Partner screen transmission and protected-video capture are not implemented. Camera/microphone calls have separate permissions.
+## Features and limitations
 
-Real multi-Mac/network, hardware/full-screen, downloaded installed-update/migration and long-session group performance remain pending. This is a prerelease. If an update cannot reopen, retain and restore its ZoomTime-previous backup through Finder and normal macOS approval. Do not delete unrelated apps/profiles or loosen system security.
+Use **•••** for saved overall and participation-scoped per-person playback volume. Microphone/camera controls use accessible symbols in Normal/Mini. **Reduce speaker echo** switches during a call/device check without rejoining; a microphone swap may briefly pause outgoing voice. Its collapsed explanation describes WebRTC processing and variable acoustic results.
 
-**Local previews named ZoomTime Experimental.app:** Check/Download works, but the current installer accepts only ZoomTime.app in /Applications or ~/Applications. Use Show verified download and Finder for these renamed previews; do not reset pairing or disable security.
+**Known screen-share/screen-capture permission bug remains unresolved.** Screen Recording can repeatedly prompt or remain denied after permission is enabled. Settings offers recovery guidance for this copy; it is not a guaranteed fix. Partner screen transmission and protected-video capture are not implemented. Screen diagnostics save local output only after an explicit Start.
+
+Actual two-Mac permission continuity, downloaded installation/recovery, acoustics, every real group/network route, Safari/rapid Spaces/Dock behavior and long-session resource tests remain pending. Self-signing does not guarantee prompt-free updates. Preserve working bundles/profiles and use supported macOS approvals. [Update guide](docs/UPDATES.md) · [Acceptance](docs/ACCEPTANCE.md).

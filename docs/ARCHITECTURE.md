@@ -1,5 +1,23 @@
 # ZoomTime project contract
 
+## v0.5.0 publication revision —2026-10-21
+
+The user explicitly requested pushing the completed changes and publishing v0.5.0 as a GitHub prerelease, updating the default-branch README, installation/update guidance and release notes. This supersedes earlier iteration-specific no-publication statements. Use a clean source commit, annotated tag and freshly signed arm64 artifacts; retain historical bundles and profiles. The first persistent-identity migration has a full ZIP and signed native feed, with no delta from older ad-hoc builds. Later compatible signed releases can use verified deltas and full fallback.
+
+Fresh publication checks:151 unit tests, generated2–5-client media,8 renderer scenarios, pinned signing fixtures, typecheck/lint and diff checks pass. Native installation fixtures and final packaged artifacts are being verified; final publication evidence follows separately. The occupied-host packaged group remains pending by user choice. Screen Recording permission recovery remains a known bug; real two-Mac permission continuity, network/acoustic and long-session acceptance remain pending. Publication does not replace installed apps or reset trust/TCC. See [release notes](releases/v0.5.0.md).
+
+## Local playback volume revision —2026-10-18
+
+User requested overall app/call voice volume independent of the Mac's volume control plus a level for each remote participant, included before0.5.0 publication. This bounded change uses the existing one-video/one-audio-playback path per remote person. A saved0–100% overall call level multiplies each participant's0–100% local level. Defaults are100%;0 silences playback. No sender gain, microphone state, signaling, WebRTC renegotiation, new capture or audio framework is involved. macOS output volume/mute still sets the final maximum.
+
+Use the stage's **•••** menu in Normal or Mini mode: **Call volume** controls all incoming voices; the named sliders control individuals. Overall level is validated and persisted in the existing private preferences file. Individual levels last for that participation, survive pinning, camera changes and recovery on the same peer/video, and reset to100% after departure/new participation. Renames update literal text/accessible labels without replacing the control. The menu scrolls within the stage at160×90 and320×180; changing layout retains audio/video elements.
+
+No publication or installed-app replacement is authorized by this feature addition. Keep the user’s running host untouched, the packaged host gate pending, and the independent screen-permission/real-device acceptance gates in force.
+
+## Free incremental updater revision —2026-10-18
+
+User authorizes preparing0.5.0 with one persistent self-signed certificate, public certificate pins, encrypted developer-only Keychain recovery backup, and Electron/Squirrel native delta installation. Check only discovers; Update explicitly stages and authorizes installation on next ordinary quit; Restart applies immediately only while no local/hosted group, device check or capture is active. Preserve both supported Applications names/paths, profiles and a verified rollback copy. GitHub HTTPS/metadata/size/hash/quarantine checks remain in a main-owned nonce-protected loopback broker; native code verifies the replacement against the running app’s pinned certificate. Sparkle BinaryDelta2.9.5 is build-only, no new runtime framework/dependency. Normalize before signing and preserve/reconstruct exact signed release bundles. Publication requires another explicit request. One migration approval is accepted, but subsequent permission continuity, screen-capture bug recovery and two-Mac physical evidence remain unproven. This supersedes historical ad-hoc/Finder-only updater descriptions below. See [updater design](superpowers/specs/2026-10-18-incremental-updater-design.md) and [operator guide](UPDATES.md).
+
 Approved 2026-10-13; group-calling revision approved2026-10-17. Audience: one private group of two to five people on Apple Silicon Macs. Each separately plays a movie while seeing the partner in a small live video window above other apps, including native full-screen video. No application-imposed call duration limit or paid service.
 
 ## v0.4.0 prerelease publication authorization —2026-10-17
@@ -200,7 +218,9 @@ User revision: both normal and Mini modes have separate persistent boolean choic
 
 The existing narrow preference bridge now validates all six fields, with exact keys and types; credentials and permission handling are unaffected. Window state includes a read-only native alwaysOnTop value so packaged checks can verify the actual OS-facing flag rather than merely echoing a preference. New focused tests cover all four combinations, malformed booleans, legacy migration and persistence. Packaged smoke now covers native flag changes, repeated mode transitions, renderer continuity and a Settings switch; that GUI run remains pending while Safari is in use.
 
-## 2026-10-16: experimental speaker echo reduction
+## Historical2026-10-16: experimental speaker echo reduction
+
+Superseded for0.5.0 by the live-switching revision below; retained as the original implementation/design record.
 
 User requested an optional attempt to keep movie/computer playback out of the outgoing microphone while using speakers. Ordinary call echoCancellation/noiseSuppression/autoGainControl remain enabled regardless of this switch. The new persistent speakerEchoReduction boolean defaults false and migrates old settings without opting in.
 
@@ -253,3 +273,15 @@ The user reports granting screen permission but seeing repeated requests and den
 Allow now preflights permission, skips the request when already granted and does not repeatedly request after a failed attempt in the same session. It still rechecks permission on every explicit retry so a new valid grant can recover. Native denial carries a fixed `screen-permission` reason; main maps it to safe guidance instead of discarding it as a generic child-process error. The no-argument `openScreenCaptureSettings` bridge opens only `x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture` after trusted-frame authorization. The user authorizes the current copy there and quits/reopens from Applications before refreshing. Opening settings cannot grant consent itself or start capture.
 
 Only source/unit/type checks are authorized for this push; no new app/helper build or native encode/GUI test is run. These source changes require a future build and a user-launched reauthorization test before claiming OS recovery.
+
+## UI controls and feedback revision —2026-10-21
+
+Use one shared stateful microphone/camera symbol renderer with accessible action names and tooltips across Normal/Mini; the same MediaCall handlers continue owning behavior. Fixed local artwork never interpolates member data. The details-based three-dot menu retains keyboard semantics, bounded scrolling and focus return. Layout/style changes retain videos, streams, peers and local volume state. Short control feedback respects Reduced Motion; error/live-region updates avoid repeated unchanged announcements. Compact targets preserve the existing160×90 desktop floor. Button inventory, design reasons and actual verification limits are in [UI/UX review](UI_UX_REVIEW.md).
+
+## Live speaker echo revision —2026-10-21
+
+Reduce speaker echo now switches within the existing call and local device check. The saved opt-in boolean is unchanged; UI removes Experimental and provides collapsed How it works information. A generated runtime probe demonstrated that applyConstraints accepts changes while retaining the old mode, so changes acquire only a replacement microphone with advertised exact all/remote-only modes (optional ideal fallback for unsupported sources). Off retains remote-call echo cancellation and normal noise suppression/gain processing. Read actual settings for applied/unavailable status.
+
+MediaCall reuses existing device-capture authorization, keeps the shared stream/video/camera/peers/call/pair generations and incoming gains, and replaces only audio senders. Mute applies before attachment and through rollback. The old microphone remains live/owned until completion; Leave stops both sides during commit or rollback. A failed optional sender replacement does not close the peer; rollback keeps original media, with explicit Recover devices feedback if restoration itself fails. Audio acquisition is bounded60seconds and late tracks are stopped without timing out the established call.
+
+DeviceCheck reuses its existing two-minute permission lease/deadline, replaces the audio graph source and preserves camera/preview/meter/monitor gain. No repeat authorization, new check, extra transmitted audio path, system capture stream, entitlement, permission bypass or dependency is introduced. Preference UI awaits application, handles failures and preserves in-flight intent through window broadcasts. A brief microphone pause and normal macOS consent remain possible; label removal does not prove acoustic/permission acceptance. [Implementation ledger](superpowers/plans/2026-10-21-live-speaker-echo.md).

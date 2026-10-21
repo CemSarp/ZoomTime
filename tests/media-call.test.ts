@@ -20,6 +20,51 @@ async function setup(context:Parameters<typeof mediaEnvironment>[0],count=5){
   const request=signals.find(m=>m.type==='request');assert.ok(request?.type==='request'&&request.v===2,'One v2 request must carry explicit recipients');
   const state=snapshot(count,request.operationId);media.handleState(state);await drain();return{...env,media,signals,state,released:()=>released};
 }
+test('live speaker reduction replaces only the microphone across four unchanged peers and preserves mute',async context=>{
+  const s=await setup(context),stream=s.local.srcObject!,camera=stream.getVideoTracks()[0],oldMic=stream.getAudioTracks()[0],peers=[...s.media.connections.values()],signals=s.signals.length;
+  s.media.toggleMute();
+  await s.media.setSpeakerEchoReduction(true);await drain();
+  const microphone=stream.getAudioTracks()[0];assert.notEqual(microphone,oldMic);assert.equal(oldMic.readyState,'ended');assert.equal(microphone.enabled,false);
+  assert.equal(s.local.srcObject,stream);assert.equal(stream.getVideoTracks()[0],camera);assert.equal(camera.readyState,'live');
+  assert.deepEqual([...s.media.connections.values()],peers);assert.equal(s.acquisitions(),2);assert.equal(s.captured.filter(t=>t.readyState==='live').length,2);
+  for(const peer of FakePeer.instances)assert.equal(peer.getSenders().find(sender=>sender.track?.kind==='audio')?.track,microphone);
+  assert.ok(s.signals.slice(signals).every(m=>!['request','accept','description','recover'].includes(m.type)));
+  await s.media.setSpeakerEchoReduction(false);await drain();assert.equal(microphone.readyState,'ended');assert.equal(stream.getAudioTracks()[0].enabled,false);assert.equal(s.media.state.speakerEcho,'standard');
+});
+test('failed live echo acquisition preserves the current microphone, camera and peers',async context=>{
+  const s=await setup(context,2),stream=s.local.srcObject!,tracks=stream.getTracks(),peers=[...s.media.connections.values()];
+  s.devices.getUserMedia=async()=>{throw Error('permission denied');};
+  await assert.rejects(()=>s.media.setSpeakerEchoReduction(true),/speaker echo/i);
+  assert.deepEqual(stream.getTracks(),tracks);assert.ok(tracks.every(t=>t.readyState==='live'));assert.deepEqual([...s.media.connections.values()],peers);assert.equal(s.media.state.capturing,false);
+});
+test('leaving during a live echo microphone request stops late audio without reviving the call',async context=>{
+  const s=await setup(context,2);let release!:(stream:FakeStream)=>void;
+  s.devices.getUserMedia=async()=>new Promise<FakeStream>(resolve=>{release=resolve;});
+  const changing=s.media.setSpeakerEchoReduction(true);await drain();s.media.stop();const late=new FakeTrack('audio');release(new FakeStream([late]));await changing;
+  assert.equal(late.readyState,'ended');assert.equal(s.local.srcObject,null);assert.equal(s.media.connections.size,0);
+});
+test('leaving during queued echo sender replacement stops old and new microphones immediately',async context=>{
+  const s=await setup(context,2),sender=FakePeer.instances[0].getSenders()[0],replace=sender.replaceTrack.bind(sender);let release!:()=>void;
+  sender.replaceTrack=async track=>{await new Promise<void>(resolve=>{release=resolve;});await replace(track);};
+  const changing=s.media.setSpeakerEchoReduction(true);await drain();s.media.stop();
+  assert.ok(s.captured.every(track=>track.readyState==='ended'));release();await changing;
+});
+test('a rejected echo sender change rolls back without closing peers or reacquiring camera',async context=>{
+  const s=await setup(context,3);await s.media.toggleCamera();FakePeer.instances[0].failReplacement=true;
+  const original=s.local.srcObject!.getAudioTracks()[0];await assert.rejects(()=>s.media.setSpeakerEchoReduction(true),/speaker echo/i);await drain();
+  assert.equal(s.media.state.cameraOn,false);assert.equal(s.captured.filter(track=>track.kind==='video').length,1);
+  const microphone=s.captured.find(track=>track.kind==='audio'&&track.readyState==='live');assert.ok(microphone);
+  assert.equal(microphone,original);assert.ok(FakePeer.instances.every(peer=>peer.connectionState!=='closed'));
+  for(const peer of FakePeer.instances)assert.equal(peer.getSenders().find(sender=>sender.track?.kind==='audio')?.track,original);
+  assert.equal(s.signals.some(m=>m.type==='failed'),false);assert.equal(s.captured.filter(t=>t.readyState==='live').length,1);
+});
+test('leaving during echo rollback immediately stops the rejected replacement microphone too',async context=>{
+  const s=await setup(context,3),original=s.local.srcObject!.getAudioTracks()[0],sender=FakePeer.instances[1].getSenders()[0],replace=sender.replaceTrack.bind(sender);let release!:()=>void;
+  FakePeer.instances[0].failReplacement=true;
+  sender.replaceTrack=async track=>{if(track===original)await new Promise<void>(resolve=>{release=resolve;});await replace(track);};
+  const changing=s.media.setSpeakerEchoReduction(true);await drain();assert.ok(release);s.media.stop();
+  assert.ok(s.captured.every(track=>track.readyState==='ended'));release();await changing;
+});
 test('five-person media shares one capture across four peers and camera/mute updates every sender',async context=>{
   const s=await setup(context);assert.equal(s.acquisitions(),1);assert.equal(FakePeer.instances.length,4);
   const microphone=s.captured.find(t=>t.kind==='audio')!,camera=s.captured.find(t=>t.kind==='video')!;

@@ -1,4 +1,4 @@
-import { microphoneConstraints, speakerEchoStatus, type SpeakerEchoStatus } from './audio-processing.ts';
+import { microphoneConstraints, requestMicrophone, speakerEchoStatus, type SpeakerEchoStatus } from './audio-processing.ts';
 import { videoConstraints, type VideoQuality } from './preferences.ts';
 import type { CallingState, CaptureAction, StartCall } from './calling-state.ts';
 import type { ClientMessage, ServerMessage } from './protocol.ts';
@@ -24,7 +24,42 @@ export class MediaCall {
   private requestTimer: ReturnType<typeof setTimeout> | undefined;
   private value = initial();
   constructor(bridge: MediaBridge, view: MediaView) { this.bridge = bridge; this.view = view; navigator.mediaDevices.addEventListener('devicechange', () => this.checkDevices()); }
-  setSpeakerEchoReduction(enabled: boolean): void { this.speakerEchoReduction = enabled; }
+  async setSpeakerEchoReduction(enabled: boolean): Promise<void> {
+    if (enabled === this.speakerEchoReduction) return;
+    if (!this.stream) { this.speakerEchoReduction = enabled; return; }
+    const callId = this.latest?.call?.id;
+    if (this.value.capturing || !callId) throw new Error('Wait for the microphone operation to finish, then retry speaker echo reduction.');
+    const epoch = this.epoch, previousSetting = this.speakerEchoReduction;
+    this.speakerEchoReduction = enabled; this.value.capturing = true; this.changed();
+    let acquired: MediaStream | null = null, previous: MediaStream | null = null, replacement: MediaStreamTrack | null = null;
+    let rollbackFailed = false;
+    try {
+      await this.bridge.authorizeCapture({ action: 'devices', callId }); if (!this.valid(epoch)) return;
+      acquired = await requestMicrophone(enabled, this.stream.getAudioTracks()[0]); if (!this.valid(epoch)) return;
+      const microphone = acquired.getAudioTracks()[0]; microphone.enabled = !this.value.muted;
+      replacement = microphone;
+      previous = new MediaStream(this.stream.getAudioTracks()); this.retiringStream = previous;
+      for (const track of previous.getTracks()) this.stream.removeTrack(track);
+      this.stream.addTrack(microphone); acquired = null;
+      const replaced = await Promise.allSettled([...this.peers.values()].map(peer => peer.replaceMicrophone(microphone))); if (!this.valid(epoch)) return;
+      if (replaced.some(result => result.status === 'rejected')) {
+        const original = previous.getAudioTracks()[0]; original.enabled = !this.value.muted; this.stream.removeTrack(microphone); this.stream.addTrack(original);
+        this.retiringStream = new MediaStream([microphone]); previous = this.retiringStream;
+        const restored = await Promise.allSettled([...this.peers.values()].map(peer => peer.replaceMicrophone(original))); if (!this.valid(epoch)) return;
+        rollbackFailed = restored.some(result => result.status === 'rejected');
+        if (rollbackFailed) this.value.error = 'Some microphone senders could not recover. Use Recover devices; your call remains open.';
+        throw new Error('Speaker echo sender replacement failed.');
+      }
+      this.value.speakerEcho = speakerEchoStatus(microphone, enabled); this.attachPreview(); this.mediaStatus();
+    } catch {
+      if (this.valid(epoch)) { this.speakerEchoReduction = previousSetting; throw new Error(rollbackFailed ? this.value.error! : 'Speaker echo reduction could not change. Your current microphone and call are kept. Retry when ready.'); }
+    } finally {
+      acquired?.getTracks().forEach(track => track.stop()); previous?.getTracks().forEach(track => track.stop());
+      if (replacement && !this.stream?.getAudioTracks().includes(replacement)) replacement.stop();
+      if (this.retiringStream === previous) this.retiringStream = null;
+      if (this.valid(epoch)) { this.value.capturing = false; this.changed(); }
+    }
+  }
   get connections(): ReadonlyMap<string, RTCPeerConnection> { return new Map([...this.peers].map(([id, peer]) => [id, peer.connection])); }
   get connection(): RTCPeerConnection | null { return this.peers.values().next().value?.connection ?? null; }
   get state(): MediaState {

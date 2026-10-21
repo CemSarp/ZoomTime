@@ -1,0 +1,33 @@
+import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,chmodSync} from 'node:fs';
+import {homedir} from 'node:os';
+import {resolve,join} from 'node:path';
+import {execFileSync,spawn} from 'node:child_process';
+import {createHash} from 'node:crypto';
+const directory=join(homedir(),'Library/Application Support/ZoomTime Developer Signing');
+mkdirSync(directory,{recursive:true,mode:0o700});
+const info=lstatSync(directory);if(!info.isDirectory()||info.isSymbolicLink()||info.uid!==process.getuid()||(info.mode&0o077))throw Error('Signing backup directory must be private and owned by you.');
+mkdirSync('out/signing-tools',{recursive:true});
+const helper=resolve('out/signing-tools/Keychain');
+execFileSync('xcrun',['swiftc','native/release-signing/Keychain.swift','-o',helper],{stdio:['ignore','ignore','pipe']});
+// The recovery secret only crosses private child-process pipes, never argv or logs.
+const password=execFileSync(helper,['password'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+const run=(args,passes)=>new Promise((done,reject)=>{
+ const child=spawn('/usr/bin/openssl',args,{stdio:['ignore','pipe','pipe',...passes.map(()=> 'pipe')]});let error='';
+ child.stderr.on('data',chunk=>{error=(error+chunk).slice(-4096);});
+ passes.forEach((value,i)=>child.stdio[i+3].end(value+'\n'));
+ child.on('error',reject);child.on('exit',code=>code===0?done():reject(Error('OpenSSL signing setup failed: '+error)));
+});
+const encrypted=join(directory,'private-key.encrypted.pem'),certificate=join(directory,'certificate.pem'),p12=join(directory,'identity.encrypted.p12');
+if(!existsSync(encrypted))await run(['genrsa','-aes256','-passout','fd:3','-out',encrypted,'3072'],[password]);
+if(!existsSync(certificate))await run(['req','-new','-x509','-sha256','-key',encrypted,'-passin','fd:3','-days','3650','-subj','/CN=ZoomTime Private Release Signing','-addext','keyUsage=critical,digitalSignature','-addext','extendedKeyUsage=codeSigning','-addext','basicConstraints=critical,CA:FALSE','-out',certificate],[password]);
+if(!existsSync(p12))await run(['pkcs12','-export','-inkey',encrypted,'-in',certificate,'-name','ZoomTime Private Release Signing','-out',p12,'-passin','fd:3','-passout','fd:4'],[password,password]);
+for(const path of [encrypted,p12])chmodSync(path,0o600);
+execFileSync(helper,['import',p12],{stdio:['ignore','pipe','pipe']});
+const der=execFileSync('/usr/bin/openssl',['x509','-in',certificate,'-outform','DER']);
+const policy={schema:1,certificateSha1:createHash('sha1').update(der).digest('hex'),certificateSha256:createHash('sha256').update(der).digest('hex'),appId:'com.cemsarp.zoomtime',helperId:'com.cemsarp.zoomtime.capture'};
+mkdirSync('build',{recursive:true});
+if(existsSync('build/signing-policy.json')&&JSON.parse(readFileSync('build/signing-policy.json','utf8')).certificateSha256!==policy.certificateSha256)throw Error('Existing public signing pin differs. Refusing identity rotation.');
+writeFileSync('build/signing-policy.json',JSON.stringify(policy,null,2)+'\n');
+writeFileSync('build/signing-certificate.cer',der);
+writeFileSync(join(directory,'RECOVERY.md'),'Encrypted identity backup: identity.encrypted.p12. Recovery password is in your login Keychain, service com.cemsarp.zoomtime.release-signing, account recovery-password. Keep an encrypted offline copy of this directory and recovery secret; never put them in Git or a release. No trust settings were changed.\n',{mode:0o600});
+console.log('Persistent signing identity and public certificate pins are ready. Encrypted recovery backup is in ~/Library/Application Support/ZoomTime Developer Signing.');

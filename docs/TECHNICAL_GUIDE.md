@@ -1,12 +1,24 @@
 # ZoomTime — technical guide
 
+## Local voice volume (0.5.0 prerelease)
+
+Open the video stage's **•••** menu. **Call volume** sets all incoming voices independently of the movie/system volume; the named sliders set each person's relative level. For example,50% overall ×40% participant =20% playback. Use0 to silence incoming audio locally. This never mutes anyone's microphone or changes what others hear. Overall volume is saved; participant levels reset when that participation ends. Pinning, resizing and recovery keep the same audio path and levels. At tiny Mini sizes, scroll within the menu. macOS mute/output volume still limits actual speaker/headphone output.
+
+## 0.5.0 prerelease — native incremental updates
+
+The current release is0.5.0; historical0.4.0 remains available unchanged. The first persistent-signing migration uses a full ZIP. Following one migration, Check → Update → Restart uses Electron’s bundled native updater and signed binary deltas with verified full fallback. Source is built centrally; recipients need no developer tools. See [the current update guide](UPDATES.md) for both Applications names, persistent private signing, retained backups and one-time approval limits. Permission continuity and the separate screen-capture bug remain pending; historical updater sections below describe their release dates.
+
 > Moved from the project README on 2026-10-15 so the README can stay a friendly overview. Keep technical installation, controls and troubleshooting details current here. [← Back to the README](../README.md)
 
-A private two-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, call recording, analytics, partner screen transmission, or paid calling provider. Unpublished native screen diagnostics save local H.264/PNG only after an explicit Start; see [capture capabilities](SCREEN_CAPTURE.md).
+A private two-to-five-person Mac calling app with a small, resizable floating window. Each Mac plays its own movie. No application-imposed call-duration limit, call recording, analytics, partner screen transmission, or paid calling provider. Explicit native screen diagnostics save local H.264/PNG only after an explicit Start; see [capture capabilities](SCREEN_CAPTURE.md).
 
-**[Version 0.3.4 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.3.4).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). An earlier host full-screen test passed, but the later Safari Mini failure still needs controlled verification of this release's panel candidate. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
+**[Version0.5.0 is the current GitHub prerelease](https://github.com/CemSarp/ZoomTime/releases/tag/v0.5.0).** Local real-WebRTC, signaling, security and packaged tests are documented in [verification](VERIFICATION.md). An earlier host full-screen test passed, but the later Safari Mini failure still needs controlled verification of this release's panel candidate. The partner Mac, actual cross-network calling, hardware routing and three-hour movie session remain unverified. Local generated-media tests do not establish those results.
 
-## What changed in 0.3.4
+## What changed in0.5.0
+
+Persistent private signing and authenticated native incremental-update feeds, remembered overall/per-participant local volume, live speaker echo switching and a refined accessible Normal/Mini UI. No compatible prior signed base exists, so0.5.0 ships a full migration ZIP; future releases may use deltas. See [release notes](releases/v0.5.0.md) and [migration/update guide](UPDATES.md). Physical permission/acoustic/group acceptance remains pending.
+
+## Historical: what changed in 0.3.4
 
 Independent regular/Mini always-on-top settings, optional experimental speaker echo reduction, a Safari panel candidate and user-initiated Install and restart for future releases. See [release notes](releases/v0.3.4.md) and [update instructions](UPDATES.md). Earlier updater builds need one guided Finder replacement to obtain the installer.
 
@@ -130,14 +142,14 @@ After committing final source and rebuilding, `checksums` writes version-specifi
 
 [Architecture and reasons](ARCHITECTURE.md) · [Network setup](NETWORK_SETUP.md) · [Release acceptance](ACCEPTANCE.md) · [Verification](VERIFICATION.md) · [Current handoff](../HANDOFF.md)
 
-## Experimental speaker echo reduction (0.3.4 prerelease)
+## Reduce speaker echo (0.5.0 prerelease)
 
-1. Open Settings and enable **Reduce speaker echo · Experimental** on each Mac that uses speakers.
-2. Start a new call, or start a local camera/microphone check. Changing the switch during a call applies on the next microphone session; it does not interrupt the current call.
-3. Read the status beneath the switch. Applied means the microphone reports system-audio cancellation mode; Unavailable means normal call echo cancellation continues. Enabled alone does not mean it has applied.
-4. With your partner, compare the same movie scene at a moderate volume with the option off/on in separate calls. Test silence, your speech over the movie, both partners speaking and changes of output device. Report leakage or distorted/missing speech. Use headphones if the result is poor.
+1. During a call, open Settings → **Reduce speaker echo**. Turn it on or off without leaving/rejoining. It also works during a local device check.
+2. The microphone may briefly pause while its processing mode changes. Camera, call connections, mute and individual listening levels stay intact. The choice is remembered.
+3. Read the status: Applied means the microphone reports system-audio cancellation; Unavailable means normal call echo cancellation continues. Expand **How it works** for the short WebRTC explanation and permission/quality limits. Off retains ordinary remote-call echo suppression.
+4. Compare the same movie scene at moderate volume in the same call, then speak over it and talk simultaneously. Test both Macs and output routing; report leakage or voice distortion. Headphones remain the most reliable option.
 
-The local check meter shows microphone level, not a measurement of echo removal. Listening to your own microphone through speakers can feed back: use headphones for that particular check. macOS may request system-audio consent for the experimental mode; do not bypass a refusal. Cancellation varies with hardware, runtime, room and volume and cannot guarantee zero movie audio. The app records nothing and does not send a separate system-audio stream.
+The meter is microphone level, not a measure of echo removal. Use headphones for microphone monitoring. Normal macOS system-audio consent may still be required; do not bypass refusal. Only the processed microphone is transmitted; no separate movie/system-audio stream is sent or recorded. Acquisition failure preserves the current mic; a failed sender change rolls back without closing the call. If restoration fails, use Recover devices. Physical acoustic/permission results remain pending.
 
 ## Install-and-restart updates (0.3.4 prerelease)
 
@@ -159,3 +171,7 @@ Host: keep your separate Tailscale identity and existing private Serve endpoint;
 Select named recipients and Call. Each invitee chooses Accept or Decline. Joined members can select additional online contacts and Invite. Leave stops only your media while two others remain; rejoin requires a fresh call invitation. The host must keep ZoomTime open even after leaving media. Closing/sleeping the host ends signaling and triggers bounded cleanup. One group call runs at a time. Grid/pin preserves all remote audio; screen transmission remains unsupported.
 
 Follow the [agent implementation ledger](superpowers/plans/2026-10-17-group-calling.md) and [group acceptance matrix](superpowers/plans/2026-10-17-group-calling-acceptance.md). Real2–5-Mac routes, installation/migration, overlays/devices and long-call performance remain pending. Historical two-person steps/results below or above describe their released versions.
+
+## UI refinement in0.5.0
+
+Microphone/camera controls use symbols in both modes with a slash for off, accessible action names and tooltips. The three-dot menu retains local overall/per-person levels, view/pin and People actions without a disclosure arrow. Escape closes the menu first, then restores Mini; dialogs keep Escape locally. `npm run test:ui` exercises the product renderer with synthetic bridge/call snapshots and generated devices, without real pairing/capture/updater side effects. [Complete review and pending physical evidence](UI_UX_REVIEW.md).

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain, protocol, screen, session, safeStorage, clipboard, powerMonitor, shell, type IpcMainInvokeEvent } from 'electron';
+import { app, autoUpdater, BrowserWindow, Menu, dialog, ipcMain, protocol, screen, session, safeStorage, clipboard, powerMonitor, shell, type IpcMainInvokeEvent } from 'electron';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -6,12 +6,14 @@ import { connectTailscale, setupTailscaleHost } from './tailscale.ts';
 import { decodePreferences } from './preferences.ts';
 import { join } from 'node:path';
 import { release, homedir } from 'node:os';
-import { prepareInstallation, runUpdateHelper, startUpdateHelper, updateOutcome } from './update-installer.ts';
+import { runUpdateHelper, updateOutcome } from './update-installer.ts';
 import { clampBounds, defaultBounds, leaveFullScreen, changeFullScreen, type WindowMode } from './window-state.ts';
 import { assetPath, CONTENT_SECURITY_POLICY, CALL_PERMISSIONS_POLICY, allowCallMedia, isTrustedIpc, isWindowMode } from './security.ts';
 import { readSettings, writeSettings } from './settings.ts';
 import type { WindowState } from './bridge.ts';
-import { Updates } from './updates.ts';
+import { NativeUpdates } from './native-updates.ts';
+import { loadSigningPolicy } from './release-signing.ts';
+import { prepareNativeSession, nativeUpdateOutcome } from './native-installation.ts';
 import { CallingService } from './calling-service.ts';
 import { ScreenCapture } from './screen-capture.ts';
 import { requireAppleSilicon } from './platform.ts';
@@ -138,9 +140,17 @@ async function createWindow(): Promise<void> {
   const calling = new CallingService(join(app.getPath('userData'), 'pairing.bin'), safeStorage, event => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('call:event', event);
   });
-  const updates = new Updates(app.getVersion(), process.arch, app.getPath('downloads'), state => {
+  const nativeUpdateRoot = join(app.getPath('userData'), 'updates');
+  const updates = new NativeUpdates(app.getVersion(), process.arch, autoUpdater, (selected, progress) => {
+    if (!app.isPackaged) throw new Error('Update from the packaged app in Applications.');
+    const policy = loadSigningPolicy(join(process.resourcesPath, 'signing-policy.json'));
+    return prepareNativeSession({ executable: process.execPath, current: app.getVersion(), selected, policy, root: nativeUpdateRoot, home: homedir(), progress });
+  }, state => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('updates:state', state);
   });
+  const nativeOutcome = await nativeUpdateOutcome(nativeUpdateRoot, app.getVersion());
+  if (nativeOutcome) updates.state = { ...updates.state, message: nativeOutcome };
+  app.once('will-quit', () => { void updates.dispose(); });
   const screenCapture = new ScreenCapture(app.isPackaged ? join(process.resourcesPath, 'ZoomTimeCapture') :
     join(app.getAppPath(), 'out', 'native', process.arch, 'ZoomTimeCapture'), join(app.getPath('userData'), 'captures'), state => {
     if (!window.isDestroyed() && !window.webContents.isDestroyed()) window.webContents.send('screen:state', state);
@@ -173,16 +183,8 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('updates:download', async event => { authorize(event); await updates.download(); });
   ipcMain.handle('updates:install', async event => {
     authorize(event);
-    await updates.install(async (archive, release) => {
-      const ensureIdle = () => {
-        if (!app.isPackaged) throw new Error('Install updates from the packaged app in Applications.');
-        if (calling.inUse || screenCapture.inUse) throw new Error('End your call, device check or screen capture before installing. Your app was not replaced.');
-      };
-      ensureIdle();
-      const directory = await prepareInstallation(archive, release, process.execPath, app.getVersion(), process.arch, updateRoot, homedir());
-      ensureIdle();
-      const cancel = await startUpdateHelper(directory, process.execPath);
-      try { ensureIdle(); app.quit(); } catch (error) { cancel(); throw error; }
+    await updates.install(() => {
+      if (!app.isPackaged || calling.inUse || screenCapture.inUse) throw new Error('End all calls, device checks and screen capture before restarting.');
     });
   });
   ipcMain.handle('updates:reveal', async event => { authorize(event); shell.showItemInFolder(await updates.verifiedPath()); });

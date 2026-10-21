@@ -1,8 +1,9 @@
 export type VideoQuality = '360p' | '720p' | '1080p';
-export interface Preferences { mirror: boolean; miniSelf: boolean; quality: VideoQuality; previewSize: number; normalAlwaysOnTop: boolean; miniAlwaysOnTop: boolean; speakerEchoReduction: boolean }
+export interface Preferences { outputVolume: number; mirror: boolean; miniSelf: boolean; quality: VideoQuality; previewSize: number; normalAlwaysOnTop: boolean; miniAlwaysOnTop: boolean; speakerEchoReduction: boolean }
 export function decodePreferences(value: unknown): Preferences {
   const p = value && typeof value === 'object' ? value as Record<string, unknown> : {};
-  return { speakerEchoReduction: typeof p.speakerEchoReduction === 'boolean' ? p.speakerEchoReduction : false,
+  return { outputVolume: typeof p.outputVolume === 'number' && Number.isFinite(p.outputVolume) ? Math.round(Math.min(100, Math.max(0, p.outputVolume))) : 100,
+    speakerEchoReduction: typeof p.speakerEchoReduction === 'boolean' ? p.speakerEchoReduction : false,
     normalAlwaysOnTop: typeof p.normalAlwaysOnTop === 'boolean' ? p.normalAlwaysOnTop : false,
     miniAlwaysOnTop: typeof p.miniAlwaysOnTop === 'boolean' ? p.miniAlwaysOnTop : true,
     mirror: typeof p.mirror === 'boolean' ? p.mirror : true,

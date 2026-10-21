@@ -11,7 +11,8 @@ import { requireAppleSilicon } from './platform.ts';
 export const RELEASES_API = 'https://api.github.com/repos/CemSarp/ZoomTime/releases?per_page=100';
 const REPOSITORY = 'https://github.com/CemSarp/ZoomTime';
 const MAX_ARCHIVE = 512 * 1024 * 1024;
-export interface UpdateRelease { version: string; name: string; url: string; sha256: string; size: number; prerelease: boolean }
+export interface UpdateAsset { name: string; url: string; sha256: string; size: number }
+export interface UpdateRelease extends UpdateAsset { version: string; prerelease: boolean }
 export interface UpdateState {
   status: 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'installing' | 'error';
   currentVersion: string;
@@ -87,7 +88,7 @@ export async function fetchReleases(): Promise<unknown> {
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
   catch { throw new Error('GitHub returned invalid release information.'); }
 }
-export async function verifyArchive(path: string, release: UpdateRelease): Promise<void> {
+export async function verifyArchive(path: string, release: UpdateAsset): Promise<void> {
   const info = await stat(path);
   if (!info.isFile() || info.size !== release.size) throw new Error('The update download is incomplete. Try downloading it again.');
   const hash = createHash('sha256');
@@ -114,12 +115,12 @@ function run(args) {
     if (!result.stdout.trim()) throw new Error('No quarantine metadata');
   } catch { throw new Error('macOS could not apply download security metadata. The update will not be offered for installation.'); }
 }
-export async function saveUpdate(release: UpdateRelease, downloads: string, progress: (percent: number) => void): Promise<string> {
+export async function saveUpdate(release: UpdateAsset, downloads: string, progress: (percent: number) => void, signal?: AbortSignal): Promise<string> {
   const directory = await mkdtemp(join(downloads, 'ZoomTime-update-'));
   const partial = join(directory, release.name + '.download');
   await (await open(partial, 'wx', 0o600)).close();
   await quarantineArchive(partial, release.url);
-  const response = await githubResponse(release.url, AbortSignal.timeout(10 * 60_000));
+  const response = await githubResponse(release.url, signal ? AbortSignal.any([signal, AbortSignal.timeout(10 * 60_000)]) : AbortSignal.timeout(10 * 60_000));
   if (!response.body) throw new Error('GitHub returned an empty download.');
   let bytes = 0, percent = -1;
   const meter = new Transform({ transform(chunk: Buffer, _encoding, callback) {
@@ -135,6 +136,21 @@ export async function saveUpdate(release: UpdateRelease, downloads: string, prog
   await rename(partial, path);
   return path;
 }
+export async function fetchUpdateBytes(asset: UpdateAsset): Promise<Buffer> {
+  if (asset.size > 64 * 1024) throw new Error('The native update feed is too large.');
+  const response = await githubResponse(asset.url, AbortSignal.timeout(15_000));
+  if (!response.body) throw new Error('The update feed is empty.');
+  const chunks: Uint8Array[] = []; let bytes = 0;
+  for await (const chunk of response.body) { bytes += chunk.length; if (bytes > asset.size) throw new Error('The update feed exceeds its expected size.'); chunks.push(chunk); }
+  const data = Buffer.concat(chunks);
+  if (bytes !== asset.size || createHash('sha256').update(data).digest('hex') !== asset.sha256) throw new Error('The update feed failed verification.');
+  return data;
+}
+export async function fetchUpdateAsset(asset: UpdateAsset): Promise<unknown> {
+  const data=await fetchUpdateBytes(asset);
+  try { return JSON.parse(data.toString('utf8')); } catch { throw new Error('The update feed is invalid.'); }
+}
+// Legacy full-archive controller retained for migration/history; normal app updates use NativeUpdates.
 export class Updates {
   state: UpdateState;
   private selected?: UpdateRelease;

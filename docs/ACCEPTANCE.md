@@ -1,5 +1,10 @@
 # Release acceptance: actual two-Mac movie workflow
 
+## Current0.5.0 prerelease distribution —2026-10-21
+
+The user explicitly authorizes publishing0.5.0 before physical acceptance. Local generated/package/native fixture results support test distribution, not stable acceptance. Keep the Screen Recording permission bug, real multi-Mac/network routes, hardware acoustics, two subsequent normal-launch permission updates on two Macs, downloaded installation/recovery, rapid Spaces/Safari behavior and60-minute/three-hour performance gates pending. The first persistent-signed release is a full migration ZIP; native deltas begin with compatible future releases. Publication does not mark any unavailable evidence passed. Historical source-only sections below retain their then-current status.
+
+
 Software tests are in VERIFICATION.md. User report on 2026-10-14: normal/mini and full-screen playback worked on the user's Mac only; player/version/duration were not supplied. This is accepted as that user's observation. The partner Mac and the actual two-network call have not been accessed by the agent.
 
 Record per run: date, tester, both Mac models/processors and macOS versions, app revision/archive SHA-256, actual player/browser version, displays/scaling, network separation, headphones/output devices, observed candidate route and duration. Do not include secrets, raw SDP or personal IP addresses in shared reports.

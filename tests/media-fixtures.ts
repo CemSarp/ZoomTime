@@ -4,6 +4,7 @@ export class FakeTrack {
   constructor(kind: string) { this.kind = kind; }
   stop() { this.readyState = 'ended'; }
   getSettings() { return this.kind === 'video' ? { width: 1280, height: 720, frameRate: 30 } : { echoCancellation: true }; }
+  getCapabilities() { return {}; }
   async applyConstraints() {}
 }
 export class FakeStream {

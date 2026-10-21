@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const bundle = resolve(process.argv[2] ?? 'out/ZoomTime-darwin-arm64/ZoomTime.app');
+const uiOnly = process.argv.includes('--ui-only');
+const bundle = resolve(process.argv.slice(2).find(arg => !arg.startsWith('--')) ?? 'out/ZoomTime-darwin-arm64/ZoomTime.app');
 const executable = join(bundle, 'Contents/MacOS/ZoomTime');
 assert.equal(process.platform, 'darwin', 'Packaged UI checks require macOS');
 assert.ok(existsSync(executable), 'Run npm run make:arm64 first, or pass an app bundle path');
@@ -93,6 +94,9 @@ async function smoke(minimum) {
     assert.equal(await evaluate("window.zoomtime.sendSignal({v:1,type:'request'}).then(()=>false,()=>true)"), true, 'Unpaired apps cannot signal a call');
     assert.deepEqual(await evaluate("window.zoomtime.getCallingState().then(s=>Object.keys(s).sort())"), ['busy','call','endpoint','error','groupId','hostId','members','network','role','selfId'].sort());
     assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).objectFit"),'contain');
+    assert.equal(await evaluate("['mute','camera','mini-mute','mini-camera'].every(id=>{const b=document.getElementById(id);return b.querySelector('svg[aria-hidden=true]')&&b.getAttribute('aria-label')&&b.title&&b.textContent==='';})"),true,'Media controls use accessible symbols in both modes');
+    assert.equal(await evaluate("(() => {const summary=document.querySelector('#call-menu summary');return getComputedStyle(summary).listStyleType==='none'&&summary.querySelectorAll('circle').length===3;})()"),true,'Call menu contains only three dots, with no native disclosure arrow');
+    assert.equal(await evaluate("document.getElementById('mini-people').hidden"),true,'Unpaired People action is hidden');
     await evaluate('window.__remoteForTest=document.getElementById("remote-grid")');
     assert.equal(await evaluate("(() => {try {eval('1+1');return false;}catch(e){return e.name==='EvalError';}})()"), true, 'CSP must reject string evaluation');
     assert.equal(await evaluate("fetch('https://example.com').then(()=>false,()=>true)"), true, 'Renderer outbound requests must be blocked');
@@ -130,6 +134,12 @@ async function smoke(minimum) {
       const stoppedCheck = "window.__checkTracksForTest.every(t=>t.readyState==='ended') && document.getElementById('check-video').srcObject===null";
       await startCheck();
       assert.equal(await evaluate("document.getElementById('check-listen').checked"),false,'Voice monitoring starts off');
+      await evaluate("window.__echoCheckStream=document.getElementById('check-video').srcObject;window.__echoCheckCamera=window.__echoCheckStream.getVideoTracks()[0];window.__echoCheckMic=window.__echoCheckStream.getAudioTracks()[0];document.getElementById('speaker-echo-reduction').click()");
+      await waitCheck("!document.getElementById('speaker-echo-reduction').disabled && document.getElementById('speaker-echo-reduction').checked",'Live packaged check echo enable finishes');
+      assert.equal(await evaluate("window.__echoCheckMic.readyState==='ended'&&window.__echoCheckStream===document.getElementById('check-video').srcObject&&window.__echoCheckCamera===window.__echoCheckStream.getVideoTracks()[0]&&window.__echoCheckCamera.readyState==='live'&&window.__echoCheckStream.getAudioTracks()[0].getSettings().echoCancellation==='all'"),true,'Actual device-check lease supports live echo without restarting preview/camera');
+      await evaluate("document.getElementById('speaker-echo-reduction').click()");
+      await waitCheck("!document.getElementById('speaker-echo-reduction').disabled && !document.getElementById('speaker-echo-reduction').checked",'Live packaged check echo disable finishes');
+      assert.equal(await evaluate("window.__echoCheckStream.getAudioTracks()[0].getSettings().echoCancellation"),'remote-only','Off actually removes the broader playback reference');
       assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.call===null)"),true,'Local check never starts a call');
       await evaluate("document.getElementById('check-listen').click()");
       await waitCheck("document.getElementById('check-status').textContent.includes('listening through')",'Explicit voice monitoring starts');
@@ -150,6 +160,20 @@ async function smoke(minimum) {
       assert.equal((await evaluate('window.zoomtime.restore()')).alwaysOnTop, normalAlwaysOnTop, 'Restore reapplies the regular level');
       assert.equal(await evaluate('document.body.dataset.rendererSession'), rendererSession, 'Top-level changes preserve the renderer');
     }
+    assert.equal((await evaluate('window.zoomtime.getState()')).preferences.outputVolume,100,'Old profiles default to full call volume');
+    assert.equal(await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),outputVolume:101}).then(()=>false,()=>true))()"),true,'Output volume rejects out-of-range IPC');
+    await evaluate("document.getElementById('call-menu').open=true;const volume=document.getElementById('output-volume');volume.value='35';volume.dispatchEvent(new Event('input'));");
+    await evaluate("window.zoomtime.setMode('mini')");await evaluate("window.zoomtime.restore()");
+    assert.equal(await evaluate("document.getElementById('output-volume').value"),'35','Uncommitted volume must survive native geometry updates');
+    await evaluate("document.getElementById('output-volume').dispatchEvent(new Event('change'))");
+
+    for(let i=0;i<50;i++){if((await evaluate('window.zoomtime.getState()')).preferences.outputVolume===35)break;await delay(50);}
+    assert.equal((await evaluate('window.zoomtime.getState()')).preferences.outputVolume,35,'Overall call volume saves through the real bridge');
+    assert.equal(await evaluate("document.getElementById('output-volume-value').textContent"),'35%');
+    await evaluate("document.getElementById('call-menu').open=false");
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('mini-self')).transitionDuration"),'0s','Reduced motion disables control transitions');
+    await send('Emulation.setEmulatedMedia', { features: [] });
     if (!minimum) await screenshot('normal.png');
     assert.equal(await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:'yes',miniSelf:true,quality:'1080p',previewSize:24}).then(()=>false,()=>true))()"),true,'Invalid preferences must be rejected at IPC');
     await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),mirror:true,miniSelf:true,quality:'1080p',previewSize:35}))()");
@@ -180,6 +204,14 @@ async function smoke(minimum) {
     assert.equal(await evaluate("getComputedStyle(document.getElementById('self-preview')).display"),'none','Mini preview can be hidden');
     assert.equal(await evaluate("getComputedStyle(document.getElementById('local')).transform"),'none','Mirroring can be disabled');
 
+    await evaluate("document.getElementById('call-menu').open=true;document.getElementById('output-volume').scrollIntoView({block:'nearest'});");
+    const volumeLayout=await evaluate("(() => {const range=document.getElementById('output-volume'),r=range.getBoundingClientRect(),pane=range.parentElement.getBoundingClientRect();return {value:range.value,range:r.toJSON(),pane:pane.toJSON(),width:innerWidth,height:innerHeight,max:getComputedStyle(range.parentElement).maxHeight};})()");
+    assert.equal(volumeLayout.value,'35');assert.ok(volumeLayout.range.width>50&&volumeLayout.range.left>=0&&volumeLayout.range.right<=volumeLayout.width&&volumeLayout.range.top>=0&&volumeLayout.range.bottom<=volumeLayout.height&&volumeLayout.pane.bottom<=volumeLayout.height,JSON.stringify(volumeLayout));
+    await evaluate("(() => {const rows=document.getElementById('participant-volumes');for(let i=1;i<=4;i++){const label=document.createElement('label'),name=document.createElement('span'),range=document.createElement('input'),value=document.createElement('output');label.className='participant-volume';label.dataset.layoutFixture='true';name.textContent='Synthetic person '+i;range.type='range';range.min='0';range.max='100';range.setAttribute('aria-label',name.textContent+' volume');value.textContent='100%';label.append(name,range,value);rows.append(label);}rows.lastElementChild.querySelector('input').scrollIntoView({block:'nearest'});})()");
+    assert.equal(await evaluate("(() => {const range=document.querySelector('#participant-volumes label:last-child input'),r=range.getBoundingClientRect(),pane=document.getElementById('output-volume').parentElement;return r.width>50&&r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight&&pane.scrollHeight>pane.clientHeight;})()"),true,'Four participant layout fixtures remain scrollable and reachable in Mini');
+    await screenshot(minimum ? 'mini-volume-minimum.png' : 'mini-volume.png');
+    await evaluate("document.querySelectorAll('[data-layout-fixture]').forEach(row=>row.remove())");
+    await evaluate("document.getElementById('call-menu').open=false");
     assert.ok(await counter() > firstFrame, 'Mini mode must retain the live renderer clock');
     assert.equal(await evaluate("['mini-mute','mini-camera','mini-self','restore','close'].every(id=>{const b=document.getElementById(id).getBoundingClientRect();return b.width>=26&&b.height>=32&&b.left>=0&&b.top>=0&&b.right<=innerWidth&&b.bottom<=innerHeight;})"), true, 'Mini controls must fit inside the real native window');
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 10, y: 10 });
@@ -233,6 +265,8 @@ async function smoke(minimum) {
       const fromFull = await evaluate("window.zoomtime.setMode('mini')");
       assert.equal(fromFull.fullScreen,false); assert.equal(fromFull.mode,'mini'); assert.equal(fromFull.bounds.width,320,'Full screen exits before shrinking');
       assert.deepEqual((await evaluate('window.zoomtime.restore()')).bounds,initial.bounds,'Normal bounds survive a real full-screen Space');
+      // Spaces animation can outlive did-leave-full-screen; settle before a second native entry.
+      await delay(1000);
       await evaluate('window.zoomtime.setFullScreen(true)');
       for(let i=0;i<100;i++){if((await evaluate('window.zoomtime.getState()')).fullScreen)break;await delay(100);}
       await delay(1000); await evaluate('window.zoomtime.minimize()');
@@ -245,9 +279,11 @@ async function smoke(minimum) {
       assert.equal(await evaluate("document.getElementById('settings').open"),true);
       await evaluate("document.getElementById('speaker-echo-reduction').click()");
       for(let i=0;i<40;i++){if((await evaluate('window.zoomtime.getState()')).preferences.speakerEchoReduction)break;await delay(50);}
-      assert.equal((await evaluate('window.zoomtime.getState()')).preferences.speakerEchoReduction,true,'Experimental echo switch persists explicit opt-in');
+      assert.equal((await evaluate('window.zoomtime.getState()')).preferences.speakerEchoReduction,true,'Speaker echo switch persists explicit opt-in');
       assert.equal(await evaluate("document.getElementById('local').srcObject===null&&document.getElementById('check-video').srcObject===null"),true,'Enabling echo reduction never starts capture');
-      assert.match(await evaluate("document.getElementById('speaker-echo-status').textContent"),/next call or device check/);
+      assert.match(await evaluate("document.getElementById('speaker-echo-status').textContent"),/change this during a call/);
+      assert.equal(await evaluate("document.getElementById('speaker-echo-info').open"),false,'Echo explanation starts collapsed');
+      assert.equal(await evaluate("document.querySelector('label[for=speaker-echo-reduction] strong').textContent"),'Reduce speaker echo');
       assert.equal(await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:'on'}).then(()=>false,()=>true))()"),true,'Experimental preference rejects invalid IPC values');
       await evaluate("(async () => window.zoomtime.setPreferences({...((await window.zoomtime.getState()).preferences),speakerEchoReduction:false}))()");
       await evaluate("document.getElementById('normal-always-on-top').click()");
@@ -285,6 +321,7 @@ async function smoke(minimum) {
       await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'dark'}]}); await screenshot('normal-dark.png');
       await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'light'}]}); await screenshot('normal-light.png');
     }
+    if (!uiOnly) {
     await evaluate("window.zoomtime.createHost('wss://local-test.tail.ts.net:8443/zoomtime')");
     for(let i=0;i<50;i++){if(await evaluate("window.zoomtime.getCallingState().then(s=>s.network.state==='online')"))break;await delay(50);}
     assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role==='host'&&s.network.state==='online'&&s.members.length===1&&s.selfId===s.hostId)"),true,'Packaged host must start authenticated loopback signaling');
@@ -310,16 +347,18 @@ async function smoke(minimum) {
     assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role==='host')"),true,'Real safeStorage must decrypt saved pairing');
     await evaluate('window.zoomtime.resetPairing()');
     assert.equal(await evaluate("window.zoomtime.getCallingState().then(s=>s.role===null&&s.call===null)"),true,'Reset must return to unpaired and stop the host');
-    const result = { timestamp: new Date().toISOString(), architecture: process.arch,
+    }
+    const result = { pending: uiOnly ? ['packaged host/member controls/safeStorage/retry/reset: not run in UI-only mode; retained pending under the prior user request'] : [], timestamp: new Date().toISOString(), architecture: process.arch,
       packagedBundle: bundle, checks: ['bundled secure origin', 'no renderer Node', 'narrow bridge', 'production CSP',
         'blocked network/new window/navigation', 'invalid IPC rejected', 'unpaired capture and signaling denied', 'camera/microphone capture denied', 'renderer identity continuity', 'duplicate instance reuses renderer',
         minimum ? '160x90 mini' : '320x180 mini', 'controls fit native window', 'hover exposes controls', 'Tab reaches restore and close',
-        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation', 'explicit local device check, meter, monitor and cleanup (normal-size run)', 'red Reset and bordered Settings', 'update IPC exposes no paths or arbitrary requests; no startup update/download', 'explicit Settings update result (normal-size run; see liveUpdateCheck for rate limits)', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
+        'Enter and Escape restore', 'optional mini self-preview and mirror are local only', 'preferences validation','local call volume input, IPC validation, saved setting and both Mini layouts', 'symbol-only media controls with accessible labels', 'three-dot menu without disclosure arrow and no unpaired People action', 'reduced-motion control transitions', 'explicit local device check, meter, monitor and cleanup (normal-size run)', 'red Reset and bordered Settings', 'update IPC exposes no paths or arbitrary requests; no startup update/download', 'explicit Settings update result (normal-size run; see liveUpdateCheck for rate limits)', 'native full screen to mini and Dock minimize (normal-size run)', 'Settings dialog and system light/dark appearance', 'normal bounds restored', 'five repeated transitions', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'],
       directCaptureDenial: captureDenial === 'NotAllowedError' ? 'rejected with NotAllowedError before explicit call authorization' : `inconclusive: ${captureDenial}`,
       liveUpdateCheck: minimum ? 'tested in normal-size run' : await evaluate('window.zoomtime.getUpdateState()'),
       physicalFullScreenGate: 'user reports own Mac passing; partner Mac pending', rendererSession };
-    writeFileSync(join(output, minimum ? 'packaged-smoke-minimum.json' : 'packaged-smoke.json'), `${JSON.stringify(result, null, 2)}\n`);
-    console.log(`Packaged smoke passed: ${result.checks.length} checks. Partner-Mac full-screen acceptance remains pending.`);
+    if (uiOnly) result.checks = result.checks.filter(check => !['red Reset and bordered Settings', 'real packaged safeStorage and authenticated host', 'encrypted pairing survives retry', 'pairing reset'].includes(check));
+    writeFileSync(join(output, uiOnly ? (minimum ? 'packaged-smoke-ui-minimum.json' : 'packaged-smoke-ui.json') : (minimum ? 'packaged-smoke-minimum.json' : 'packaged-smoke.json')), `${JSON.stringify(result, null, 2)}\n`);
+    console.log(`Packaged ${uiOnly ? 'UI subset' : 'smoke'} passed: ${result.checks.length} checks; ${result.pending.length} pending groups. Partner-Mac full-screen acceptance remains pending.`);
   } finally {
     socket?.close();
     child.kill('SIGTERM');

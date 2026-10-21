@@ -21,8 +21,10 @@ export class ActiveSpeaker {
     return this.active;
   }
 }
-interface Tile { root: HTMLElement; video: HTMLVideoElement; name: HTMLElement; status: HTMLElement; pin: HTMLButtonElement }
+interface Tile { root: HTMLElement; video: HTMLVideoElement; name: HTMLElement; status: HTMLElement; pin: HTMLButtonElement; level: number; volumeRow: HTMLElement; volumeInput: HTMLInputElement; volumeValue: HTMLElement }
 export class GroupVideoView {
+  private outputVolume = 100;
+  private volumeControls?: HTMLElement;
   private root: HTMLElement;
   private select: HTMLSelectElement;
   private tiles = new Map<string, Tile>();
@@ -30,8 +32,8 @@ export class GroupVideoView {
   private speaker = new ActiveSpeaker();
   private optionKey = '';
   private changed: () => void;
-  constructor(root: HTMLElement, select: HTMLSelectElement, changed: () => void) {
-    this.root = root; this.select = select; this.changed = changed;
+  constructor(root: HTMLElement, select: HTMLSelectElement, changed: () => void, volumeControls?: HTMLElement) {
+    this.root = root; this.select = select; this.changed = changed; this.volumeControls = volumeControls;
     select.addEventListener('change', () => this.pin(select.value || null));
   }
   remote(id: string): HTMLVideoElement {
@@ -42,10 +44,28 @@ export class GroupVideoView {
     video.addEventListener('loadeddata', this.changed);
     name.className = 'participant-name'; status.className = 'tile-status'; pin.type = 'button'; pin.className = 'pin-person'; pin.textContent = 'Pin';
     pin.addEventListener('click', () => this.pin(this.pinned === id ? null : id));
-    root.append(video, status, name, pin); this.root.append(root); tile = { root, video, name, status, pin }; this.tiles.set(id, tile); this.layout(); return video;
+    const volumeRow = document.createElement('label'), volumeName = document.createElement('span'), volumeInput = document.createElement('input'), volumeValue = document.createElement('output');
+    volumeRow.className = 'participant-volume'; volumeName.textContent = 'Participant';
+    volumeInput.type = 'range'; volumeInput.min = '0'; volumeInput.max = '100'; volumeInput.step = '1'; volumeInput.value = '100'; volumeInput.setAttribute('aria-label', 'Participant volume'); volumeValue.textContent = '100%';
+    volumeInput.addEventListener('input', () => this.setParticipantVolume(id, Number(volumeInput.value)));
+    volumeRow.append(volumeName, volumeInput, volumeValue); this.volumeControls?.append(volumeRow);
+    video.volume = this.outputVolume / 100;
+    root.append(video, status, name, pin); this.root.append(root); tile = { root, video, name, status, pin, level: 100, volumeRow, volumeInput, volumeValue }; this.tiles.set(id, tile); this.layout(); return video;
   }
   remove(id: string): void {
-    this.tiles.get(id)?.root.remove(); this.tiles.delete(id); if (this.pinned === id) this.pinned = null; this.layout();
+    this.tiles.get(id)?.volumeRow.remove(); this.tiles.get(id)?.root.remove(); this.tiles.delete(id); if (this.pinned === id) this.pinned = null; this.layout();
+  }
+  private validVolume(value: number): void {
+    if (!Number.isFinite(value) || value < 0 || value > 100) throw new Error('Volume must be between 0 and 100.');
+  }
+  setOutputVolume(value: number): void {
+    this.validVolume(value); this.outputVolume = value;
+    for (const tile of this.tiles.values()) tile.video.volume = value * tile.level / 10000;
+  }
+  setParticipantVolume(id: string, value: number): void {
+    this.validVolume(value); const tile = this.tiles.get(id); if (!tile) return;
+    tile.level = value; tile.video.volume = this.outputVolume * value / 10000;
+    tile.volumeInput.value = String(value); tile.volumeValue.textContent = `${value}%`;
   }
   pin(id: string | null): void { this.pinned = id && this.tiles.has(id) ? id : null; this.layout(); }
   private layout(): void {
@@ -54,13 +74,14 @@ export class GroupVideoView {
       const focused = this.pinned === id, hidden = !!this.pinned && !focused;
       tile.root.dataset.pinned = String(focused); tile.root.inert = hidden; tile.root.setAttribute('aria-hidden', String(hidden));
       tile.pin.setAttribute('aria-pressed', String(focused)); tile.pin.textContent = focused ? 'Grid' : 'Pin';
+      tile.pin.hidden = this.tiles.size < 2;
     }
   }
   render(members: Member[], call: CallSnapshot | null, state: MediaState): void {
     const levels: Record<string, MediaPeerState> = {};
     for (const [id, tile] of this.tiles) {
       const member = members.find(m => m.id === id), membership = call?.members.find(m => m.id === id), peer = state.peers[id];
-      const name = member?.name ?? 'Participant'; tile.name.textContent = `${name}${membership?.media.audio ? '' : ' · muted'}`;
+      const name = member?.name ?? 'Participant'; tile.volumeRow.children[0].textContent = name; tile.volumeInput.setAttribute('aria-label', `${name} volume`); tile.name.textContent = `${name}${membership?.media.audio ? '' : ' · muted'}`;
       tile.video.setAttribute('aria-label', `${name} video`); tile.pin.setAttribute('aria-label', this.pinned === id ? 'Return to the grid' : `Pin ${name}`);
       const visible = peer?.connection === 'connected' && !peer.stale && membership?.media.video && tile.video.readyState >= 2;
       tile.root.dataset.live = String(!!visible); tile.status.hidden = !!visible;
